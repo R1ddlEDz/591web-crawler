@@ -9,7 +9,7 @@ all_house = []
 failed_house_id = []
 
 for page in range(1, max_pages+1):
-    house_id_list = find_house(page)
+    house_id_list = find_house(page, region=1)
     all_house_id.extend(house_id_list)
     sleep_time = random.uniform(0.5, 1)
     print(f"等待{sleep_time:.2f} 秒...")
