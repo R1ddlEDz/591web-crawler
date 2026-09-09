@@ -22,7 +22,8 @@ with open("all_house_id.json", "r", encoding="utf-8") as f:
 
 for house_id in loaded_id_list:
     house = find_houseID(house_id)
-    all_house.append(house)
+    if house is not None:
+        all_house.append(house)
     sleep_time = random.uniform(0.5,1)
     print(f"等待{sleep_time:.2f} 秒...")
     sleep(sleep_time)
