@@ -1,4 +1,5 @@
 .venv
 all_house_id.json
+all_house_data.json
 utils.cpython-312.pyc
 test.py
