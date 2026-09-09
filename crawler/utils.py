@@ -95,6 +95,8 @@ def find_houseID(id):
             print(f"成功取得{id}的資料")
             soup = bs(res.text, 'lxml')
             title = get_text(soup, ".title > h1")
+            house_id = get_text(
+                soup, "#__nuxt > section:nth-child(1) > section > section.crumbs > span")[1:]
             pattern = get_text(soup, ".pattern > span[data-v-b5702979]")
             rent = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
@@ -178,6 +180,7 @@ def find_houseID(id):
 
             house_data = {
                 "title": title,
+                "house_id": house_id,
                 "pattern": pattern,
                 "rent": rent,
                 "sqm": sqm,
@@ -203,3 +206,7 @@ def find_houseID(id):
     except Exception as e:
         print(f"網頁請求失敗: {e}")
         return None
+
+
+if __name__ == '__main__':
+    print(find_houseID(21962845))

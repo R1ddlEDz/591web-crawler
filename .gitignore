@@ -3,3 +3,6 @@ all_house_id.json
 all_house_data.json
 utils.cpython-312.pyc
 test.py
+all_house_data.jsonl
+all_house_id.jsonl
+failed_house_id.jsonl
