@@ -7,7 +7,7 @@ max_pages=get_max_pages()
 all_house_id = []
 all_house = []
 
-for page in range(1, 3):
+for page in range(1, max_pages+1):
     house_id_list = find_house(page)
     all_house_id.extend(house_id_list)
     sleep_time = random.uniform(0.5,1)
