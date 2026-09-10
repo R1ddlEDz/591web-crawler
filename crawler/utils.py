@@ -4,12 +4,13 @@ import json
 from datetime import datetime, timedelta
 import re
 
+
 def get_text(soup, selector):
     element = soup.select_one(selector)
     return element.get_text(strip=True) if element else None
 
 
-def find_house(region=1, keyword=None, page=1 ,kind= (1,2,3,4)):
+def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     custom_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         "Referer": "https://rent.591.com.tw/"
@@ -18,7 +19,7 @@ def find_house(region=1, keyword=None, page=1 ,kind= (1,2,3,4)):
     job_params = {
         "region": 1,
         "page": 1,
-        "kind" : (1,2,3,4)
+        "kind": (1, 2, 3, 4)
         # keyword : "",
     }
 
@@ -41,7 +42,7 @@ def find_house(region=1, keyword=None, page=1 ,kind= (1,2,3,4)):
                 item.get("data-id")
                 for item in house_list
             ]
-            
+
             return house_id_list
             # print(type(main_content))
         except Exception as e:
@@ -53,7 +54,7 @@ def find_house(region=1, keyword=None, page=1 ,kind= (1,2,3,4)):
 # find_house(region=1)
 
 
-def get_max_pages(region=1, keyword=None, page=1, kind=(1,2,3,4)):
+def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     custom_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         "Referer": "https://rent.591.com.tw/"
@@ -79,7 +80,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1,2,3,4)):
     if max_pages == 99999:
         max_pages = round(int(soup.select_one(
             "#__nuxt > div:nth-child(4) > div.list-wrapper > main > div.list-sort > p > strong").get_text(strip=True).replace(",", "")) / 30)
-        print(max_pages)
+
     return max_pages
 
 
@@ -102,7 +103,7 @@ def find_houseID(id):
             title = get_text(soup, ".title > h1")
             house_id = get_text(
                 soup, "#__nuxt > section:nth-child(1) > section > section.crumbs > span")[1:]
-            
+
             pattern = get_text(soup, ".pattern > span[data-v-b5702979]")
             rent = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
@@ -173,29 +174,33 @@ def find_houseID(id):
             else:
                 description = None
 
-            upload_text = get_text(soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.publish-info")
-            #update_time_unfiltered = get_text(soup,"#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.grey.publish-info")
+            upload_text = get_text(
+                soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.publish-info")
+            # update_time_unfiltered = get_text(soup,"#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.grey.publish-info")
             now = datetime.now()
             if "天前發佈" in upload_text:
                 filtered_update_time = re.search(r'(\d+)\s*天前', upload_text)
                 if filtered_update_time:
                     days = int(filtered_update_time.group(1))
-                    upload_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
-                    
+                    upload_date = (now - timedelta(days=days)
+                                   ).strftime("%Y-%m-%d")
+
             elif "日發佈" in upload_text:
-                filtered_update_time = re.search(r'(\d+)\s*月\s*(\d+)\s*日', upload_text)
+                filtered_update_time = re.search(
+                    r'(\d+)\s*月\s*(\d+)\s*日', upload_text)
                 if filtered_update_time:
                     month = int(filtered_update_time.group(1))
                     day = int(filtered_update_time.group(2))
                     current_year = now.year
-                    upload_date = datetime(year=current_year, month=month, day=day).strftime("%Y-%m-%d")
+                    upload_date = datetime(
+                        year=current_year, month=month, day=day).strftime("%Y-%m-%d")
 
             # if "小時內更新" in upload_text:
             #     filtered_update_time = re.search(r'(\d+)\s*小時(?:內|前)更新', upload_text)
             #     if filtered_update_time:
             #         hours = int(filtered_update_time.group(1))
             #         update_time = (now - timedelta(hours=hours)).strftime("%Y-%m-%d")
-            
+
             script = soup.select_one("#rent-detail-structured-data")
 
             if script:
@@ -227,7 +232,7 @@ def find_houseID(id):
                 "description": description,
                 "upload_text": upload_text,
                 "upload_date": upload_date,
-                #"update_time": update_time,
+                # "update_time": update_time,
                 "crawled_time": datetime.now().strftime("%Y-%m-%d"),
                 "images": image_list
             }
@@ -244,6 +249,13 @@ def find_houseID(id):
         return None
 
 
+def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
+    region = region
+    keyword = keyword
+    page = page
+    kind = kind
+
+
 if __name__ == '__main__':
     print(find_houseID(21962845))
-    #find_house()
+    # find_house()
