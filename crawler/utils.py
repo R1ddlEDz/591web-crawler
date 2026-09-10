@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup as bs
 import json
 from datetime import datetime, timedelta
 import re
+from time import sleep
+import random
+import os
 
 
 def get_text(soup, selector):
@@ -35,15 +38,61 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     res = requests.get(url, headers=custom_headers, params=job_params)
     if res.status_code == 200:
         try:
-            print("成功取得房屋列表")
+            # print("成功取得房屋列表")
             soup = bs(res.text, 'lxml')
             house_list = soup.select("main > div > div.item[data-id]")
+            update_date = soup.select(
+                "div.item-info-txt.role-name >span.line:nth-child(2)")
+            update_list = [tag.get_text(strip=True) for tag in update_date]
+            update_house_list = []
+            now = datetime.now()
+            for date in update_list:
+                if "小時內更新" in date:
+                    filtered_update_time = re.search(
+                        r'(\d+)\s*小時內更新', date)
+                    if filtered_update_time:
+                        hours = int(filtered_update_time.group(1))
+                        updat_date = (now - timedelta(hours=hours)
+                                      ).strftime("%Y-%m-%d")
+                        update_house_list.append(updat_date)
+                    else:
+                        None
+                elif "天前更新" in date:
+                    filtered_update_time = re.search(
+                        r'(\d+)\s*天前更新', date)
+                    if filtered_update_time:
+                        days = int(filtered_update_time.group(1))
+                        updat_date = (now - timedelta(days=days)
+                                      ).strftime("%Y-%m-%d")
+                        update_house_list.append(updat_date)
+                    else:
+                        None
+                elif "昨日更新" in date:
+                    updat_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+                    update_house_list.append(updat_date)
+
+                elif "分鐘內更新" in date:
+                    filtered_update_time = re.search(
+                        r'(\d+)\s*分鐘內更新', date)
+                    if filtered_update_time:
+                        min = int(filtered_update_time.group(1))
+                        updat_date = (now - timedelta(minutes=min)
+                                      ).strftime("%Y-%m-%d")
+                        update_house_list.append(updat_date)
             house_id_list = [
                 item.get("data-id")
                 for item in house_list
             ]
+            house_zip = []
 
-            return house_id_list
+            for house_id_1, update_list_1 in zip(house_id_list, update_house_list):
+                house_zip.append({
+                    "house_id": house_id_1,
+                    "history_date": update_list_1
+                })
+            # return house_id_list
+            # return update_house_list
+            return house_zip
             # print(type(main_content))
         except Exception as e:
             print(e)
@@ -64,6 +113,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         "region": 1,
         "page": 1,
         # keyword : "",
+        "kind": (1, 2, 3, 4)
     }
     max_pages = 99999
 
@@ -73,6 +123,8 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         job_params['region'] = region
     if page != 1:
         job_params['page'] = page
+    if kind != "1,2,3,4":
+        job_params['kind'] = kind
 
     res = requests.get(url, headers=custom_headers, params=job_params)
     soup = bs(res.text, 'lxml')
@@ -80,7 +132,10 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     if max_pages == 99999:
         max_pages = round(int(soup.select_one(
             "#__nuxt > div:nth-child(4) > div.list-wrapper > main > div.list-sort > p > strong").get_text(strip=True).replace(",", "")) / 30)
-
+        max_pages_bp = soup.select_one(
+            "#__nuxt > div:nth-child(4) > div.list-wrapper > main > div.list-sort > p > strong").get_text(strip=True).replace(",", "")
+    # print(f"region, keyword, page, kind")
+    # print(max_pages_bp)
     return max_pages
 
 
@@ -254,8 +309,145 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     keyword = keyword
     page = page
     kind = kind
+    loaded_id_list = []
+    # 嘗試讀取all_house_id.jsonl
+    if os.path.exists("all_house_id.jsonl"):
+
+        with open("all_house_id.jsonl", "r", encoding="utf-8") as f:
+
+            for line in f:
+
+                if line.strip():
+
+                    loaded_id_list.append(
+                        json.loads(line.strip())
+                    )
+
+        # 如果沒有all_house_id.jsonl是空的就開始排ID列表
+        if len(loaded_id_list) == 0:
+
+            print("目前沒有房屋 ID")
+            print("開始爬取房屋 ID...")
+
+            max_pages = get_max_pages(region=region,
+                                      keyword=keyword,
+
+                                      kind=kind)
+
+            with open("all_house_id.jsonl", "a", encoding="utf-8") as f:
+                print(f"找到{max_pages}頁")
+                for page in range(1, max_pages + 1):
+                    print(f"正在爬取房屋列表第{page}頁")
+
+                    house_id_list = find_house(
+                        region=region,
+                        keyword=keyword,
+                        page=page,
+                        kind=kind
+                    )
+
+                    if not house_id_list:
+                        print(f"第 {page} 頁沒有取得 ID")
+                        continue
+
+                    # 寫入 JSONL
+                    for house_id in house_id_list:
+                        f.write(json.dumps(house_id, ensure_ascii=False) + "\n")
+                        loaded_id_list.append(house_id)
+
+                    f.flush()
+
+                    print(f"取得 {len(house_id_list)} 筆 ID")
+                    sleep_time = random.uniform(1.0, 2.5)
+                    print(f"還有{(max_pages)-(page)}頁,等待 {sleep_time:.2f} 秒...")
+                    sleep(sleep_time)
+
+            print(f"房屋 ID 取得完成，總共 {len(loaded_id_list)} 筆")
+
+        else:
+            print(f"已存在房屋 ID，共 {len(loaded_id_list)} 筆")
+
+    else:  # all_house_id.jsonl 不存在 -> 開始獲取房屋ID列表
+        print("找不到all_house_id.jsonl")
+        print("開始取得房屋ID...")
+        max_pages = get_max_pages(region=region,
+                                  keyword=keyword,
+                                  kind=kind)
+        with open("all_house_id.jsonl", "a", encoding="utf-8") as f:
+            for page in range(1, max_pages + 1):
+                print(f"正在取得第{page}頁房屋ID")
+
+                house_id_list = find_house(
+                    region=region,
+                    keyword=keyword,
+                    page=page,
+                    kind=kind
+                )
+                for house_id in house_id_list:
+                    f.write(json.dumps(house_id, ensure_ascii=False) + "\n")
+                    loaded_id_list.append(house_id)
+                f.flush()
+                sleep_time = random.uniform(0.8, 1.5)
+                print(f"第{page}頁完成")
+                print(f"等待{sleep_time} 秒...")
+                sleep(sleep_time)
+
+    print("開始取得房屋詳細資料")
+
+    crawled_ids = set()
+    if os.path.exists("all_house_data.jsonl"):
+        with open("all_house_data.jsonl", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    data = json.loads(line.strip())
+
+                    if isinstance(data, dict):
+
+                        if "house_id" in data:
+                            crawled_ids.add(data["house_id"])
+    if os.path.exists("failed_house_id.jsonl"):
+        with open("failed_house_id.jsonl", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    house_id = json.loads(line.strip())
+                    crawled_ids.add(house_id)
+    print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
+
+    success_count = 0
+    fail_count = 0
+
+    with open("all_house_data.jsonl", "a", encoding="utf-8") as f_success, \
+            open("failed_house_id.jsonl", "a", encoding="utf-8") as f_fail:
+        for house in loaded_id_list:
+            house_id = house['house_id']
+            if house_id in crawled_ids:
+                print(f"ID: {house_id}已處理過,跳過")
+                continue
+
+            print(f"開始取得ID: {house_id}的詳細資料...")
+            house_data = find_houseID(house_id)
+
+            if house is not None:
+                f_success.write(json.dumps(house, ensure_ascii=False) + "\n")
+                f_success.flush()
+                success_count += 1
+                print(f"爬取成功")
+
+            else:
+                f_fail.write(json.dumps(house_id, ensure_ascii=False) + "\n")
+                f_fail.flush()
+                fail_count += 1
+                print(f"ID: {house_id} 爬取失敗,已存入failed_house_id.jsonl")
+
+            sleep_time = random.uniform(1.0, 2.5)
+            print(f"等待{sleep_time:.2f}秒...")
+            sleep(sleep_time)
+
+    print("房屋詳細資料爬取完成")
+    print(f"本次成功:{success_count}筆")
+    print(f"失敗:{fail_count}筆")
 
 
 if __name__ == '__main__':
-    print(find_houseID(21962845))
-    # find_house()
+    print(find_houseID(21978510))
+    # print(find_house())
