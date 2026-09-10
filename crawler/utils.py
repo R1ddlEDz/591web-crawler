@@ -250,6 +250,15 @@ def find_houseID(id):
                     upload_date = datetime(
                         year=current_year, month=month, day=day).strftime("%Y-%m-%d")
 
+            elif "分鐘前發佈" in upload_text:
+                filtered_update_time = re.search(r'(\d+)\s*分鐘前發佈', upload_text)
+                if filtered_update_time:
+                    mins = int(filtered_update_time.group(1))
+                    upload_date = (now - timedelta(minutes=mins)
+                                   ).strftime("%Y-%m-%d")
+            else:
+                upload_date = None
+
             # if "小時內更新" in upload_text:
             #     filtered_update_time = re.search(r'(\d+)\s*小時(?:內|前)更新', upload_text)
             #     if filtered_update_time:
@@ -294,10 +303,18 @@ def find_houseID(id):
             return house_data
 
         elif res.status_code == 403:
-            return None
+            return {
+                "success": False,
+                "house_id": house_id,
+                "status_code": 403,
+            }
 
         elif res.status_code == 404:
-            return None
+            return {
+                "success": False,
+                "house_id": house_id,
+                "status_code": 404,
+            }
 
     except Exception as e:
         print(f"網頁請求失敗: {e}")
@@ -415,7 +432,10 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
     success_count = 0
     fail_count = 0
+    remaining_count = sum(
+        1 for house in loaded_id_list if house["house_id"] not in crawled_ids)
 
+    print()
     with open("all_house_data.jsonl", "a", encoding="utf-8") as f_success, \
             open("failed_house_id.jsonl", "a", encoding="utf-8") as f_fail:
         for house in loaded_id_list:
@@ -428,7 +448,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
             house_data = find_houseID(house_id)
 
             if house is not None:
-                f_success.write(json.dumps(house, ensure_ascii=False) + "\n")
+                f_success.write(json.dumps(
+                    house_data, ensure_ascii=False) + "\n")
                 f_success.flush()
                 success_count += 1
                 print(f"爬取成功")
@@ -439,8 +460,9 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 fail_count += 1
                 print(f"ID: {house_id} 爬取失敗,已存入failed_house_id.jsonl")
 
+            remaining_count -= 1
             sleep_time = random.uniform(1.0, 2.5)
-            print(f"等待{sleep_time:.2f}秒...")
+            print(f"剩餘{remaining_count}筆資料,等待{sleep_time:.2f}秒...")
             sleep(sleep_time)
 
     print("房屋詳細資料爬取完成")
@@ -449,5 +471,6 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
 
 if __name__ == '__main__':
-    print(find_houseID(21978510))
+    # print(find_houseID(21941368))
     # print(find_house())
+    start_591crawler()
