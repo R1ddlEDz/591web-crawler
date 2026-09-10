@@ -302,20 +302,10 @@ def find_houseID(id):
             }
             return house_data
 
-        elif res.status_code == 403:
-            return {
-                "success": False,
-                "house_id": house_id,
-                "status_code": 403,
-            }
-
-        elif res.status_code == 404:
-            return {
-                "success": False,
-                "house_id": house_id,
-                "status_code": 404,
-            }
-
+        elif res.status_code in (403, 404):
+            status_code = res.status_code
+            # print(f"{id}錯誤，已寫入failed_house_data.jsonl")
+            return None, id, status_code
     except Exception as e:
         print(f"網頁請求失敗: {e}")
         return None
@@ -445,9 +435,9 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 continue
 
             print(f"開始取得ID: {house_id}的詳細資料...")
-            house_data = find_houseID(house_id)
+            house_data, id, status_code = find_houseID(house_id)
 
-            if house is not None:
+            if house_data is not None:
                 f_success.write(json.dumps(
                     house_data, ensure_ascii=False) + "\n")
                 f_success.flush()
@@ -455,10 +445,19 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 print(f"爬取成功")
 
             else:
-                f_fail.write(json.dumps(house_id, ensure_ascii=False) + "\n")
+                failed_data = {
+                    "house_id": id,
+                    "status_code": status_code,
+                    "failed_time": datetime.now().replace(microsecond=0).isoformat(" ")}
+
+                with open("failed_house_data.jsonl", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(failed_data, ensure_ascii=False) + "\n")
+                f_fail.write(json.dumps(id, ensure_ascii=False) + "\n")
                 f_fail.flush()
+
                 fail_count += 1
-                print(f"ID: {house_id} 爬取失敗,已存入failed_house_id.jsonl")
+                print(f"ID: {id} 爬取失敗, 詳細資料已存入failed_house_data.jsonl")
+                print(f"將ID: {id} 存入failed_hose_id.jsonl ID列表中")
 
             remaining_count -= 1
             sleep_time = random.uniform(1.0, 2.5)

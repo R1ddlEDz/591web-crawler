@@ -4,7 +4,6 @@
 **Before use, please install venv and requirements.txt first.** 
 ```bash
 pip install -r requirements.txt
-
 ```
 
 ## 函式功能介紹 Functions
@@ -12,11 +11,11 @@ pip install -r requirements.txt
     
    ```text
    括號裡可以使用以下介紹的參數來更改，默認值也跟下方一樣
-   使用後會獲得3個jsonl的檔案，
+   使用後會獲得3個jsonl的檔案:
    1. all_house_id.jsonl -> 裡面有房屋ID 以及當下房屋上傳/更新的日期
    2. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
    3. failed_house_id.jsonl -> 當上方獲得房屋詳細資料失敗時會被記錄到該文件檔，以供未來方便重新爬蟲/找BUG
-   
+   4. failed_house_data.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
    ```
    
 * get_text(soup,selector) 此函式會抓取標籤裡的文字，若裡面沒東西則會顯示 **None** (不須使用)
@@ -44,3 +43,14 @@ start_591crawler(region=1, keyword=None, page=1, kind=(1,2,3,4))
 
 ## 已知問題
 如果網頁傳回403 / 404，會在資料裡面新增一行"null"
+
+不將"null"寫入房屋資料裡
+
+暫時加入if else偵測status_code 如果是403/404 則會回傳以下資料到failed_house_data.jsonl
+```python
+"house_id": id,
+"status_code": status_code,
+"failed_time": YYYY-MM-DD HH:MM:SS
+```
+並且還會再傳house_id到failed_hose_id.jsonl
+

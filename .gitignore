@@ -8,3 +8,4 @@ all_house_id.jsonl
 failed_house_id.jsonl
 main_1.py
 main_2.py
+failed_house_data.jsonl
