@@ -66,7 +66,7 @@ with open("all_house_data.jsonl", "a", encoding="utf-8") as f_success, \
             f_fail.flush()
 
         # 隨機延時防封鎖
-        sleep_time = random.uniform(1.0, 2.5)  # 591 建議間隔拉長一點比較安全
+        sleep_time = random.uniform(1.0, 2.5)
         print(f"等待 {sleep_time:.2f} 秒...")
         sleep(sleep_time)
 
