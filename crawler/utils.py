@@ -150,7 +150,7 @@ def find_houseID(id):
 
     try:
         res = requests.get(url, headers=custom_headers)
-
+        status_code = res.status_code
         # main_content = soup.select_one("#__nuxt > div:nth-child(4) > div.list-wrapper > main > div:nth-child(5) > div")
         if res.status_code == 200:
             print(f"成功取得{id}的資料")
@@ -300,15 +300,15 @@ def find_houseID(id):
                 "crawled_time": datetime.now().strftime("%Y-%m-%d"),
                 "images": image_list
             }
-            return house_data
+            return house_data, id, status_code
 
         elif res.status_code in (403, 404):
-            status_code = res.status_code
+
             # print(f"{id}錯誤，已寫入failed_house_data.jsonl")
             return None, id, status_code
     except Exception as e:
         print(f"網頁請求失敗: {e}")
-        return None
+        return None, id, status_code
 
 
 def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
