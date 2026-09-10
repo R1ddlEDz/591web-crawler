@@ -108,10 +108,13 @@ def find_houseID(id):
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
             facility = soup.select_one(
                 "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div.facility")
-            facility_list = [
-                x.get_text(strip=True)
-                for x in facility.select(":scope > dl:not(.del)")
-            ]
+            if facility:
+                facility_list = [
+                    x.get_text(strip=True)
+                    for x in facility.select(":scope > dl:not(.del)")
+                ]
+            else:
+                facility_list = []
             rental_period = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(1) > span.desc-value")
             pet = get_text(
