@@ -350,6 +350,40 @@ def find_houseID(id):
         return None, id, status_code
 
 
+def jsonl_to_json(input_path, output_path):
+    data_list = []
+    output_dir = os.path.dirname(output_path)
+
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        for line_number, line in enumerate(f, start=1):
+            line = line.strip()
+
+            if not line:
+                continue
+
+            try:
+                data = json.loads(line)
+                data_list.append(data)
+
+            except json.JSONDecodeError as e:
+                print(f"第{line_number}行發生錯誤，已跳過")
+                print(f"錯誤:{e}")
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(data_list, f, ensure_ascii=False, indent=4)
+    print(f"{output_path}轉換完成")
+
+
+def export_house_data_json():
+    jsonl_to_json(
+        "all_house_data.jsonl",
+        "output/all_house_data.json"
+    )
+
+
 def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     region = region
     keyword = keyword
@@ -518,6 +552,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     print("房屋詳細資料爬取完成")
     print(f"本次成功:{success_count}筆")
     print(f"失敗:{fail_count}筆")
+    print("開始將house_data轉換成json檔")
+    export_house_data_json()
 
 
 if __name__ == '__main__':

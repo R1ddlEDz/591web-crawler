@@ -6,3 +6,6 @@ from crawler.utils import *
 # kind(類型) 默認為1,2,3,4 | 1=整層住家, 2=獨立套房, 3=分租套房, 4=雅房, 8=車位, 24=其他
 
 start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4))
+
+# export_house_data_json()
+# 使用start_591crawler後會自動轉換jsnol成json檔 此函式是方便直接將all_house_data.jsonl轉換用的(不用再爬一次)

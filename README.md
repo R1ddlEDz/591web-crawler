@@ -17,6 +17,7 @@ pip install -r requirements.txt
    2. rent_history.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔 以方便未來紀錄租金歷史
    3. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
    4. failed_house_data.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
+   5. output/all_house_data.json -> 爬蟲結束後會自動獲得這份檔案 將jsonl轉成json 以方便解析
    ```
    
 * get_text(soup,selector) 此函式會抓取標籤裡的文字，若裡面沒東西則會顯示 **None** (不須使用)
@@ -28,6 +29,10 @@ pip install -r requirements.txt
 * get_max_pages(region=1, keyword=None, page=1, kind=(1,2,3,4)) 會回傳該搜尋結果的最大頁數
 * find_houseID(id) 會搜尋指定房屋ID的詳細資料
     * 標題，房型，租金，坪數，層數，地址，交通，生活，教育，設備，最短租期，養寵物，屋況介紹以及該該房屋的所有圖片URL
+* jsonl_to_json(目標檔案,輸出位置+檔案)
+    * 將jsonl檔轉成json用的函式 輸出位置+檔案範例: output/all_house_data.json 會在這個資料夾的根目錄新建一個output資料夾 並把檔案轉成all_house_data.json
+* export_house_data_json()
+    *此函式不需使用 啟動start_591crawler()後會自動將all_house_data.jsonl轉成start_591crawler() 以方便資料解析
 
 
 ## 使用方法
