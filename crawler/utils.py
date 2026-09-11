@@ -7,13 +7,16 @@ from time import sleep
 import random
 import os
 
+random_id = random.randint(10000, 99999)
+# print(random_id)
+
 
 def get_text(soup, selector):
     element = soup.select_one(selector)
     return element.get_text(strip=True) if element else None
 
 
-def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
+def find_house(region=1, keyword=None, page=1, kind=1):
     custom_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         "Referer": "https://rent.591.com.tw/"
@@ -22,7 +25,7 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     job_params = {
         "region": 1,
         "page": 1,
-        "kind": (1, 2, 3, 4)
+        "kind": 1
         # keyword : "",
     }
 
@@ -32,7 +35,7 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         job_params['region'] = region
     if page != 1:
         job_params['page'] = page
-    if kind != "1,2,3,4":
+    if kind != 1:
         job_params['kind'] = kind
 
     res = requests.get(url, headers=custom_headers, params=job_params)
@@ -107,7 +110,7 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 })
             # return house_id_list
             # return update_house_list
-            return house_zip, history_list
+            return house_zip, history_list, kind
             # print(type(main_content))
         except Exception as e:
             print(e)
@@ -118,7 +121,7 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 # find_house(region=1)
 
 
-def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
+def get_max_pages(region=1, keyword=None, page=1, kind=1):
     custom_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         "Referer": "https://rent.591.com.tw/"
@@ -128,7 +131,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         "region": 1,
         "page": 1,
         # keyword : "",
-        "kind": (1, 2, 3, 4)
+        "kind": 1
     }
     max_pages = 99999
 
@@ -138,7 +141,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         job_params['region'] = region
     if page != 1:
         job_params['page'] = page
-    if kind != "1,2,3,4":
+    if kind != 1:
         job_params['kind'] = kind
 
     res = requests.get(url, headers=custom_headers, params=job_params)
@@ -154,7 +157,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     return max_pages
 
 
-def find_houseID(id):
+def find_houseID(id, kind):
     custom_headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         "Referer": "https://rent.591.com.tw/"
@@ -337,6 +340,7 @@ def find_houseID(id):
                 "upload_date": upload_date,
                 # "update_time": update_time,
                 "crawled_time": datetime.now().strftime("%Y-%m-%d"),
+                "kind": kind,
                 "images": image_list
             }
             return house_data, id, status_code
@@ -352,6 +356,8 @@ def find_houseID(id):
 
 def jsonl_to_json(input_path, output_path):
     data_list = []
+    file_name, file_text = os.path.splitext(output_path)
+    output_path = f"{file_name}_{random_id}{file_text}"
     output_dir = os.path.dirname(output_path)
 
     if output_dir:
@@ -377,24 +383,26 @@ def jsonl_to_json(input_path, output_path):
     print(f"{output_path}轉換完成")
 
 
-def export_house_data_json():
+def export_house_data_json(kind):
+
     jsonl_to_json(
-        "all_house_data.jsonl",
-        "output/all_house_data.json"
+        f"all_house_data_{kind}.jsonl",
+        f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
     )
 
 
-def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
+def start_591crawler(region=1, keyword=None, page=1, kind=1):
     region = region
     keyword = keyword
     page = page
     kind = kind
+
     loaded_id_list = []
     # 嘗試讀取all_house_id.jsonl
-    if os.path.exists("all_house_id.jsonl"):
+    if os.path.exists(f"all_house_id_{kind}.jsonl"):
 
-        with open("all_house_id.jsonl", "r", encoding="utf-8") as f, \
-                open("rent_history.jsonl", "r", encoding="utf-8")as f_rent:
+        with open(f"all_house_id_{kind}.jsonl", "r", encoding="utf-8") as f, \
+                open(f"rent_history_{kind}.jsonl", "r", encoding="utf-8")as f_rent:
 
             for line in f:
 
@@ -412,11 +420,10 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
             max_pages = get_max_pages(region=region,
                                       keyword=keyword,
-
                                       kind=kind)
 
-            with open("all_house_id.jsonl", "a", encoding="utf-8") as f, \
-                    open("rent_history.jsonl", "a", encoding="utf-8")as f_rent:
+            with open(f"all_house_id_{kind}.jsonl", "a", encoding="utf-8") as f, \
+                    open(f"rent_history_{kind}.jsonl", "a", encoding="utf-8")as f_rent:
                 print(f"找到{max_pages}頁")
                 for page in range(1, max_pages + 1):
                     print(f"正在爬取房屋列表第{page}頁")
@@ -454,17 +461,17 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
             print(f"已存在房屋 ID，共 {len(loaded_id_list)} 筆")
 
     else:  # all_house_id.jsonl 不存在 -> 開始獲取房屋ID列表
-        print("找不到all_house_id.jsonl")
+        print(f"找不到all_house_id_{kind}.jsonl")
         print("開始取得房屋ID...")
         max_pages = get_max_pages(region=region,
                                   keyword=keyword,
                                   kind=kind)
-        with open("all_house_id.jsonl", "a", encoding="utf-8") as f, \
-                open("rent_history.jsonl", "a", encoding="utf-8")as f_rent:
+        with open(f"all_house_id_{kind}.jsonl", "a", encoding="utf-8") as f, \
+                open(f"rent_history_{kind}.jsonl", "a", encoding="utf-8")as f_rent:
             for page in range(1, max_pages + 1):
                 print(f"正在取得第{page}頁房屋ID")
 
-                house_id_list, history_list = find_house(
+                house_id_list, history_list, kind = find_house(
                     region=region,
                     keyword=keyword,
                     page=page,
@@ -488,8 +495,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     print("開始取得房屋詳細資料")
 
     crawled_ids = set()
-    if os.path.exists("all_house_data.jsonl"):
-        with open("all_house_data.jsonl", "r", encoding="utf-8") as f:
+    if os.path.exists(f"all_house_data_{kind}.jsonl"):
+        with open(f"all_house_data_{kind}.jsonl", "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     data = json.loads(line.strip())
@@ -498,22 +505,22 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
                         if "house_id" in data:
                             crawled_ids.add(data["house_id"])
-    if os.path.exists("failed_house_data.jsonl"):
-        with open("failed_house_data.jsonl", "r", encoding="utf-8") as f:
+    if os.path.exists(f"failed_house_data_{kind}.jsonl"):
+        with open(f"failed_house_data_{kind}.jsonl", "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     data = json.loads(line.strip())
                     house_id = data['house_id']
                     crawled_ids.add(house_id)
-    print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過,將會跳過")
+    print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
 
     success_count = 0
     fail_count = 0
     remaining_count = sum(
         1 for house in loaded_id_list if house["house_id"] not in crawled_ids)
 
-    with open("all_house_data.jsonl", "a", encoding="utf-8") as f_success, \
-            open("failed_house_data.jsonl", "a", encoding="utf-8") as f_fail:
+    with open(f"all_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_success, \
+            open(f"failed_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_fail:
         for house in loaded_id_list:
             house_id = house['house_id']
             if house_id in crawled_ids:
@@ -521,7 +528,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 continue
 
             print(f"開始取得ID: {house_id}的詳細資料...")
-            house_data, returned_id, status_code = find_houseID(house_id)
+            house_data, returned_id, status_code = find_houseID(house_id, kind)
 
             if house_data is not None:
                 f_success.write(json.dumps(
@@ -542,7 +549,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 f_fail.flush()
 
                 fail_count += 1
-                print(f"ID: {returned_id} 爬取失敗, 詳細資料已存入failed_house_data.jsonl")
+                print(
+                    f"ID: {returned_id} 爬取失敗, 詳細資料已存入failed_house_data_{kind}.jsonl")
 
             remaining_count -= 1
             sleep_time = random.uniform(1.0, 2.5)
@@ -552,8 +560,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     print("房屋詳細資料爬取完成")
     print(f"本次成功:{success_count}筆")
     print(f"失敗:{fail_count}筆")
-    print("開始將house_data轉換成json檔")
-    export_house_data_json()
+    print(f"開始將house_data_{kind}轉換成json檔")
+    export_house_data_json(kind)
 
 
 if __name__ == '__main__':

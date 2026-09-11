@@ -12,12 +12,12 @@ pip install -r requirements.txt
     
    ```text
    括號裡可以使用以下介紹的參數來更改，默認值也跟下方一樣
-   使用後會以下jsonl檔案:
-   1. all_house_id.jsonl -> 裡面有房屋ID 以及當下房屋上傳/更新的日期
-   2. rent_history.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔 以方便未來紀錄租金歷史
-   3. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
-   4. failed_house_data.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
-   5. output/all_house_data.json -> 爬蟲結束後會自動獲得這份檔案 將jsonl轉成json 以方便解析
+   使用後會以下jsonl檔案 (kind=房屋類型):
+   1. all_house_id_{kind}.jsonl -> 裡面有房屋ID 以及當下房屋上傳/更新的日期
+   2. rent_history_{kind}.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔 以方便未來紀錄租金歷史
+   3. all_house_data_{kind}.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
+   4. failed_house_data_{kind}.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
+   5. output/all_house_data_{YYYY_mmdd}_(五位數亂碼).json -> 爬蟲結束後會自動獲得這份檔案 將jsonl轉成json 以方便解析
    ```
    
 * get_text(soup,selector) 此函式會抓取標籤裡的文字，若裡面沒東西則會顯示 **None** (不須使用)
