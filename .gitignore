@@ -1,3 +1,4 @@
+__pycache__/
 .venv
 all_house_id.json
 all_house_data.json
@@ -10,3 +11,9 @@ main_1.py
 main_2.py
 failed_house_data.jsonl
 rent_history.jsonl
+all_house_id(*)
+all_house_data(*)
+failed_house_id(*)
+failed_house_data(*)
+rent_history(*)
+output/
