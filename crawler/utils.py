@@ -45,6 +45,11 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 "div.item-info-txt.role-name >span.line:nth-child(2)")
             update_list = [tag.get_text(strip=True) for tag in update_date]
             update_house_list = []
+            rent = soup.select(
+                "strong.text-26px.font-arial > div.inline-flex-row")
+            rent_unfil_list = [tag.get_text(strip=True) for tag in rent]
+            rent_list = [int(rent_text.replace(",", ""))
+                         for rent_text in rent_unfil_list]
             now = datetime.now()
             for date in update_list:
                 if "小時內更新" in date:
@@ -90,9 +95,19 @@ def find_house(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                     "house_id": house_id_1,
                     "history_date": update_list_1
                 })
+            date_now_withseconds = datetime.now().replace(microsecond=0).isoformat(" ")
+            history_list = []
+            for house_id, rent_price in zip(
+                    house_id_list,
+                    rent_list):
+                history_list.append({
+                    "house_id": house_id,
+                    "recorded_at": date_now_withseconds,
+                    "rent": rent_price
+                })
             # return house_id_list
             # return update_house_list
-            return house_zip
+            return house_zip, history_list
             # print(type(main_content))
         except Exception as e:
             print(e)
@@ -296,8 +311,7 @@ def find_houseID(id):
                         image_list = [
                             img
                             for img in item["image"]
-                            if "(null)" not in img and ".jpg" in img
-                        ]
+                            if "(null)" not in img]
                         break
             else:
                 image_list = []
@@ -345,7 +359,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     # 嘗試讀取all_house_id.jsonl
     if os.path.exists("all_house_id.jsonl"):
 
-        with open("all_house_id.jsonl", "r", encoding="utf-8") as f:
+        with open("all_house_id.jsonl", "r", encoding="utf-8") as f, \
+                open("rent_history.jsonl", "r", encoding="utf-8")as f_rent:
 
             for line in f:
 
@@ -366,12 +381,13 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
                                       kind=kind)
 
-            with open("all_house_id.jsonl", "a", encoding="utf-8") as f:
+            with open("all_house_id.jsonl", "a", encoding="utf-8") as f, \
+                    open("rent_history.jsonl", "a", encoding="utf-8")as f_rent:
                 print(f"找到{max_pages}頁")
                 for page in range(1, max_pages + 1):
                     print(f"正在爬取房屋列表第{page}頁")
 
-                    house_id_list = find_house(
+                    house_id_list, history_list = find_house(
                         region=region,
                         keyword=keyword,
                         page=page,
@@ -387,7 +403,11 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                         f.write(json.dumps(house_id, ensure_ascii=False) + "\n")
                         loaded_id_list.append(house_id)
 
+                    for rent_history in history_list:
+                        f_rent.write(json.dumps(
+                            rent_history, ensure_ascii=False) + "\n")
                     f.flush()
+                    f_rent.flush()
 
                     print(f"取得 {len(house_id_list)} 筆 ID")
                     sleep_time = random.uniform(1.0, 2.5)
@@ -405,20 +425,27 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         max_pages = get_max_pages(region=region,
                                   keyword=keyword,
                                   kind=kind)
-        with open("all_house_id.jsonl", "a", encoding="utf-8") as f:
+        with open("all_house_id.jsonl", "a", encoding="utf-8") as f, \
+                open("rent_history.jsonl", "a", encoding="utf-8")as f_rent:
             for page in range(1, max_pages + 1):
                 print(f"正在取得第{page}頁房屋ID")
 
-                house_id_list = find_house(
+                house_id_list, history_list = find_house(
                     region=region,
                     keyword=keyword,
                     page=page,
                     kind=kind
                 )
+                # 寫入 JSONL
                 for house_id in house_id_list:
                     f.write(json.dumps(house_id, ensure_ascii=False) + "\n")
                     loaded_id_list.append(house_id)
+
+                for rent_history in history_list:
+                    f_rent.write(json.dumps(
+                        rent_history, ensure_ascii=False) + "\n")
                 f.flush()
+                f_rent.flush()
                 sleep_time = random.uniform(0.8, 1.5)
                 print(f"第{page}頁完成")
                 print(f"等待{sleep_time} 秒...")

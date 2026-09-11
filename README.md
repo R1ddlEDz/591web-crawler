@@ -17,6 +17,8 @@ pip install -r requirements.txt
    2. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
    3. failed_house_id.jsonl -> 當上方獲得房屋詳細資料失敗時會被記錄到該文件檔，以供未來方便重新爬蟲/找BUG
    4. failed_house_data.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
+   5. rent_history.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔
+   以方便未來紀錄租金歷史
    ```
    
 * get_text(soup,selector) 此函式會抓取標籤裡的文字，若裡面沒東西則會顯示 **None** (不須使用)
