@@ -443,7 +443,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 if line.strip():
                     house_id = json.loads(line.strip())
                     crawled_ids.add(house_id)
-    print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
+    print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過,將會跳過")
 
     success_count = 0
     fail_count = 0
@@ -456,7 +456,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
         for house in loaded_id_list:
             house_id = house['house_id']
             if house_id in crawled_ids:
-                print(f"ID: {house_id}已處理過,跳過")
+                # print(f"ID: {house_id}已處理過,跳過")
                 continue
 
             print(f"開始取得ID: {house_id}的詳細資料...")
