@@ -12,7 +12,7 @@ pip install -r requirements.txt
     
    ```text
    括號裡可以使用以下介紹的參數來更改，默認值也跟下方一樣
-   使用後會獲得4個jsonl的檔案:
+   使用後會獲得以下jsonl的檔案:
    1. all_house_id.jsonl -> 裡面有房屋ID 以及當下房屋上傳/更新的日期
    2. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
    3. failed_house_id.jsonl -> 當上方獲得房屋詳細資料失敗時會被記錄到該文件檔，以供未來方便重新爬蟲/找BUG
