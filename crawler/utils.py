@@ -162,7 +162,24 @@ def find_houseID(id):
             pattern = get_text(soup, ".pattern > span[data-v-b5702979]")
             rent = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
-            sqm = get_text(soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.house-detail > div > section:nth-child(1) > div.section-content > div:nth-child(2) > div:nth-child(1) > span.value")
+
+            identity_requirement = None
+            for item in soup.select("div.desc-item"):
+                label_span = item.select_one("span.desc-label")
+                label = label_span.get_text(strip=True) if label_span else None
+                # print(label)
+                if label and "身份要求" in label:
+                    value = item.select_one("span.desc-value")
+
+                    if value:
+                        identity_requirement = value.get_text(strip=True)
+                    break
+
+            # sqm = get_text(soup, "div.pattern > span.inline-flex-row")
+
+            sqm_span = next((span for span in soup.select(
+                            "div.pattern > span.inline-flex-row") if "坪" in span.get_text(strip=True)), None)
+            sqm = sqm_span.get_text(strip=True) if sqm_span else None
             floor = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.pattern > span:nth-child(5)")
 
@@ -290,6 +307,7 @@ def find_houseID(id):
                 "house_id": house_id,
                 "pattern": pattern,
                 "rent": rent,
+                "identity_requirement": identity_requirement,
                 "sqm": sqm,
                 "floor": floor,
                 "address": address,
