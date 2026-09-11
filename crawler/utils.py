@@ -464,11 +464,12 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
                         if "house_id" in data:
                             crawled_ids.add(data["house_id"])
-    if os.path.exists("failed_house_id.jsonl"):
-        with open("failed_house_id.jsonl", "r", encoding="utf-8") as f:
+    if os.path.exists("failed_house_data.jsonl"):
+        with open("failed_house_data.jsonl", "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
-                    house_id = json.loads(line.strip())
+                    data = json.loads(line.strip())
+                    house_id = data['house_id']
                     crawled_ids.add(house_id)
     print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過,將會跳過")
 
@@ -477,9 +478,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
     remaining_count = sum(
         1 for house in loaded_id_list if house["house_id"] not in crawled_ids)
 
-    print()
     with open("all_house_data.jsonl", "a", encoding="utf-8") as f_success, \
-            open("failed_house_id.jsonl", "a", encoding="utf-8") as f_fail:
+            open("failed_house_data.jsonl", "a", encoding="utf-8") as f_fail:
         for house in loaded_id_list:
             house_id = house['house_id']
             if house_id in crawled_ids:
@@ -487,7 +487,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
                 continue
 
             print(f"開始取得ID: {house_id}的詳細資料...")
-            house_data, id, status_code = find_houseID(house_id)
+            house_data, returned_id, status_code = find_houseID(house_id)
 
             if house_data is not None:
                 f_success.write(json.dumps(
@@ -498,18 +498,17 @@ def start_591crawler(region=1, keyword=None, page=1, kind=(1, 2, 3, 4)):
 
             else:
                 failed_data = {
-                    "house_id": id,
+                    "house_id": returned_id,
                     "status_code": status_code,
                     "failed_time": datetime.now().replace(microsecond=0).isoformat(" ")}
 
-                with open("failed_house_data.jsonl", "a", encoding="utf-8") as f:
-                    f.write(json.dumps(failed_data, ensure_ascii=False) + "\n")
-                f_fail.write(json.dumps(id, ensure_ascii=False) + "\n")
+                f_fail.write(json.dumps(
+                    failed_data, ensure_ascii=False) + "\n")
+                # f_fail.write(json.dumps(id, ensure_ascii=False) + "\n")
                 f_fail.flush()
 
                 fail_count += 1
-                print(f"ID: {id} 爬取失敗, 詳細資料已存入failed_house_data.jsonl")
-                print(f"將ID: {id} 存入failed_hose_id.jsonl ID列表中")
+                print(f"ID: {returned_id} 爬取失敗, 詳細資料已存入failed_house_data.jsonl")
 
             remaining_count -= 1
             sleep_time = random.uniform(1.0, 2.5)

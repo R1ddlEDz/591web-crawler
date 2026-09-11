@@ -12,13 +12,11 @@ pip install -r requirements.txt
     
    ```text
    括號裡可以使用以下介紹的參數來更改，默認值也跟下方一樣
-   使用後會獲得以下jsonl的檔案:
+   使用後會以下jsonl檔案:
    1. all_house_id.jsonl -> 裡面有房屋ID 以及當下房屋上傳/更新的日期
-   2. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
-   3. failed_house_id.jsonl -> 當上方獲得房屋詳細資料失敗時會被記錄到該文件檔，以供未來方便重新爬蟲/找BUG
+   2. rent_history.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔 以方便未來紀錄租金歷史
+   3. all_house_data.jsonl -> 裡面有跟上方順序一樣的房屋詳細資料
    4. failed_house_data.jsonl -> 會回傳固定格式(status_code, 房子ID, 錯誤時間) 到該文件檔
-   5. rent_history.jsonl -> 會回傳固定格式(house_id, 紀錄時間, 租金) 到該文件檔
-   以方便未來紀錄租金歷史
    ```
    
 * get_text(soup,selector) 此函式會抓取標籤裡的文字，若裡面沒東西則會顯示 **None** (不須使用)
