@@ -179,8 +179,16 @@ def find_houseID(id):
                 facility_list = []
             rental_period = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(1) > span.desc-value")
-            pet = get_text(
-                soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(4) > span.desc-value")
+            # pet = get_text(
+            #     soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(4) > span.desc-value")
+            pet_span = next((span for span in soup.select(
+                "span.desc-value") if "寵物" in span.get_text(strip=True)), None)
+            pet = pet_span.get_text(strip=True) if pet_span else None
+
+            cook_span = next((span for span in soup.select(
+                "span.desc-value") if "開伙" in span.get_text(strip=True)), None)
+            cook = cook_span.get_text(strip=True) if cook_span else None
+
             transportation_list = []
             # rent = soup.select_one("#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
             transportation_main = get_text(
@@ -250,14 +258,8 @@ def find_houseID(id):
                     upload_date = datetime(
                         year=current_year, month=month, day=day).strftime("%Y-%m-%d")
 
-            elif "分鐘前發佈" in upload_text:
-                filtered_update_time = re.search(r'(\d+)\s*分鐘前發佈', upload_text)
-                if filtered_update_time:
-                    mins = int(filtered_update_time.group(1))
-                    upload_date = (now - timedelta(minutes=mins)
-                                   ).strftime("%Y-%m-%d")
             else:
-                upload_date = None
+                upload_date = now.strftime("%Y-%m-%d")
 
             # if "小時內更新" in upload_text:
             #     filtered_update_time = re.search(r'(\d+)\s*小時(?:內|前)更新', upload_text)
@@ -274,7 +276,11 @@ def find_houseID(id):
 
                 for item in data.get("@graph", []):
                     if "image" in item:
-                        image_list = item["image"]
+                        image_list = [
+                            img
+                            for img in item["image"]
+                            if "(null)" not in img and ".jpg" in img
+                        ]
                         break
             else:
                 image_list = []
@@ -293,6 +299,7 @@ def find_houseID(id):
                 "facility": facility_list,
                 "rental_period": rental_period,
                 "pet": pet,
+                "cook": cook,
                 "description": description,
                 "upload_text": upload_text,
                 "upload_date": upload_date,
