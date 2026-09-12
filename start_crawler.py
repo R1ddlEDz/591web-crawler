@@ -9,6 +9,9 @@ from crawler.utils import *
 
 start_591crawler_all(limit=None)
 
+# merge_json("1.json","2.json...", folder="output")
+# 手動合併json檔 默認位置為output 除非資料夾不同 再加上folder參數
+
 # start_591crawler(region=1, keyword=None, page=1, kind=, limit=None)
 # 只單一跑特定房屋種類的爬蟲
 

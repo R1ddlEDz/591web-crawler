@@ -596,6 +596,28 @@ def start_591crawler_all(limit=None):
         file_paths.append(path)
     merge_house_data_json(file_paths)
 
+def merge_json(*file_names, folder="output"):
+    merge_data = []
+
+    for file_name in file_names:
+        file_path = os.path.join(folder,file_name)
+        with open(file_path,"r",encoding="utf-8")as f:
+            data = json.load(f)
+
+            if isinstance(data,list):
+                merge_data.extend(data)
+    random_id_merge = random.randint(10000, 99999)
+
+    output_path = os.path.join(
+        folder,
+        (f"data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json"))
+
+    with open(output_path,"w",encoding="utf-8")as f:
+        json.dump(merge_data,f,ensure_ascii=False,indent=4)
+
+    print(f"合併完成, 輸出位置: {output_path}")
+
+
 if __name__ == '__main__':
     # print(find_houseID(21941368))
     # print(find_house())
