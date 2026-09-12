@@ -391,13 +391,16 @@ def export_house_data_json(kind):
     )
 
 
-def start_591crawler(region=1, keyword=None, page=1, kind=1):
+def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     region = region
     keyword = keyword
     page = page
     kind = kind
+    limit = limit
 
     loaded_id_list = []
+    
+
     # 嘗試讀取all_house_id.jsonl
     if os.path.exists(f"all_house_id_{kind}.jsonl"):
 
@@ -513,6 +516,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
                     crawled_ids.add(house_id)
     print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
 
+    
+    process_count = 0
     success_count = 0
     fail_count = 0
     remaining_count = sum(
@@ -526,6 +531,10 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
                 # print(f"ID: {house_id}已處理過,跳過")
                 continue
 
+            if limit is not None and process_count >= limit:
+                print(f"已達本次測試上線: {limit}筆")
+                break
+            
             print(f"開始取得ID: {house_id}的詳細資料...")
             house_data, returned_id, status_code = find_houseID(house_id, kind)
 
@@ -551,17 +560,19 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
                 print(
                     f"ID: {returned_id} 爬取失敗, 詳細資料已存入failed_house_data_{kind}.jsonl")
 
+            process_count += 1
             remaining_count -= 1
             sleep_time = random.uniform(1.0, 2.5)
             print(f"剩餘{remaining_count}筆資料,等待{sleep_time:.2f}秒...")
             sleep(sleep_time)
 
+    
     print("房屋詳細資料爬取完成")
     print(f"本次成功:{success_count}筆")
     print(f"失敗:{fail_count}筆")
     print(f"開始將house_data_{kind}轉換成json檔")
     export_house_data_json(kind)
-    path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
+    path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}_{random_id}.json"
     return path
 
 def merge_house_data_json(file_paths):
@@ -577,11 +588,11 @@ def merge_house_data_json(file_paths):
     with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json","w",encoding="utf-8")as f:
         json.dump(merge_data,f,ensure_ascii=False,indent=4)
 
-def start_591crawler_all():
+def start_591crawler_all(limit=None):
     file_paths = []
 
     for kind in [1, 2, 3, 4]:
-        path = start_591crawler(kind=kind)
+        path = start_591crawler(kind=kind,limit=limit)
         file_paths.append(path)
     merge_house_data_json(file_paths)
 
