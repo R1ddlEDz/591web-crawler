@@ -561,7 +561,29 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
     print(f"失敗:{fail_count}筆")
     print(f"開始將house_data_{kind}轉換成json檔")
     export_house_data_json(kind)
+    path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
+    return path
 
+def merge_house_data_json(file_paths):
+    merge_data = []
+
+    for file_path in file_paths:
+        with open(file_path,"r",encoding="utf-8")as f:
+            data = json.load(f)
+
+            if isinstance(data,list):
+                merge_data.extend(data)
+
+    with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json","w",encoding="utf-8")as f:
+        json.dump(merge_data,f,ensure_ascii=False,indent=4)
+
+def start_591crawler_all():
+    file_paths = []
+
+    for kind in [1, 2, 3, 4]:
+        path = start_591crawler(kind=kind)
+        file_paths.append(path)
+    merge_house_data_json(file_paths)
 
 if __name__ == '__main__':
     # print(find_houseID(21941368))

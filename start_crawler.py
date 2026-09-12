@@ -12,8 +12,6 @@ from crawler.utils import *
 # export_house_data_json()
 # 使用start_591crawler後會自動轉換jsnol成json檔 此函式是方便直接將all_house_data.jsonl轉換用的(不用再爬一次)
 
-
-for kind in [1, 2, 3, 4]:
-    start_591crawler(kind=kind)
+start_591crawler_all()
 
 # 按照清單裡面的房屋類型進行爬蟲
