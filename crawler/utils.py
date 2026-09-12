@@ -401,8 +401,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
     # 嘗試讀取all_house_id.jsonl
     if os.path.exists(f"all_house_id_{kind}.jsonl"):
 
-        with open(f"all_house_id_{kind}.jsonl", "r", encoding="utf-8") as f, \
-                open(f"rent_history_{kind}.jsonl", "r", encoding="utf-8")as f_rent:
+        with open(f"all_house_id_{kind}.jsonl", "r", encoding="utf-8") as f:
 
             for line in f:
 
@@ -428,7 +427,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
                 for page in range(1, max_pages + 1):
                     print(f"正在爬取房屋列表第{page}頁")
 
-                    house_id_list, history_list = find_house(
+                    house_id_list, history_list, kind = find_house(
                         region=region,
                         keyword=keyword,
                         page=page,
@@ -489,7 +488,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1):
                 f_rent.flush()
                 sleep_time = random.uniform(0.8, 1.5)
                 print(f"第{page}頁完成")
-                print(f"等待{sleep_time} 秒...")
+                print(f"等待{sleep_time:.2f} 秒...")
                 sleep(sleep_time)
 
     print("開始取得房屋詳細資料")
