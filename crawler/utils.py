@@ -6,6 +6,7 @@ import re
 from time import sleep
 import random
 import os
+from pathlib import Path
 
 random_id = random.randint(10000, 99999)
 # print(random_id)
@@ -171,7 +172,7 @@ def find_houseID(id, kind):
         status_code = res.status_code
         # main_content = soup.select_one("#__nuxt > div:nth-child(4) > div.list-wrapper > main > div:nth-child(5) > div")
         if res.status_code == 200:
-            print(f"成功取得{id}的資料")
+            #print(f"成功取得{id}的資料")
             soup = bs(res.text, 'lxml')
             title = get_text(soup, ".title > h1")
             house_id = get_text(
@@ -588,6 +589,8 @@ def merge_house_data_json(file_paths):
     with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json","w",encoding="utf-8")as f:
         json.dump(merge_data,f,ensure_ascii=False,indent=4)
 
+    
+
 def start_591crawler_all(limit=None):
     file_paths = []
 
@@ -598,14 +601,13 @@ def start_591crawler_all(limit=None):
 
 def merge_json(*file_names, folder="output"):
     merge_data = []
-
+    #print(merge_data)
     for file_name in file_names:
         file_path = os.path.join(folder,file_name)
         with open(file_path,"r",encoding="utf-8")as f:
             data = json.load(f)
 
-            if isinstance(data,list):
-                merge_data.extend(data)
+        merge_data.extend(data)
     random_id_merge = random.randint(10000, 99999)
 
     output_path = os.path.join(
@@ -615,8 +617,48 @@ def merge_json(*file_names, folder="output"):
     with open(output_path,"w",encoding="utf-8")as f:
         json.dump(merge_data,f,ensure_ascii=False,indent=4)
 
-    print(f"合併完成, 輸出位置: {output_path}")
+    output_name = f"all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json"
+     
+    print(f"合併完成, 輸出位置: {output_name}")
+    #return output_path
 
+def auto_merge_json(file_names):
+    folder = "output"
+    merged_data = []
+    random_id_merge = random.randint(10000, 99999)
+    for file_name in file_names:
+        file_path = os.path.join(folder, file_name)
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        merged_data.extend(data)
+    with open(f"{folder}/select_data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json","w",encoding="utf-8")as f:
+            json.dump(merged_data,f,ensure_ascii=False,indent=4)
+    output_path = f"{folder}/select_data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json"
+    print(f"json檔已合併完成,路徑: {output_path}")
+    return merged_data
+
+def start_591crawler_select(kinds=None,limit=None):
+    if kinds is None:
+        kinds = [1,2,3,4]
+    elif isinstance(kinds, int):
+        kinds = [kinds]
+    elif isinstance(kinds, str):
+        kinds = [int(x.strip()) for x in kinds.split(",")]
+
+    file_paths = []
+
+    for kind in kinds:
+        path = start_591crawler(kind=kind,limit=limit)
+        filename = Path(path).name
+        file_paths.append(filename)
+
+    if len(file_paths) == 1:
+        return file_paths[0]
+    #print(file_paths)    
+    merged_path = auto_merge_json(file_paths)
+    return merged_path
 
 if __name__ == '__main__':
     # print(find_houseID(21941368))
