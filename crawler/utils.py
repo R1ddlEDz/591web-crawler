@@ -179,8 +179,9 @@ def find_houseID(id, kind):
                 soup, "#__nuxt > section:nth-child(1) > section > section.crumbs > span")[1:]
 
             pattern = get_text(soup, ".pattern > span[data-v-b5702979]")
-            rent = get_text(
+            rent_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
+            rent = int(rent_text.replace(",","").strip())
 
             identity_requirement = None
             for item in soup.select("div.desc-item"):
@@ -198,10 +199,10 @@ def find_houseID(id, kind):
 
             sqm_span = next((span for span in soup.select(
                             "div.pattern > span.inline-flex-row") if "坪" in span.get_text(strip=True)), None)
-            sqm = sqm_span.get_text(strip=True) if sqm_span else None
+            sqm = (float(sqm_span.get_text(strip=True).replace('坪','').strip()) if sqm_span else None)
             floor = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.pattern > span:nth-child(5)")
-
+            print(sqm)
             address = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
             facility = soup.select_one(
