@@ -172,18 +172,49 @@ def find_houseID(id, kind):
         status_code = res.status_code
         # main_content = soup.select_one("#__nuxt > div:nth-child(4) > div.list-wrapper > main > div:nth-child(5) > div")
         if res.status_code == 200:
-            #print(f"成功取得{id}的資料")
+            # print(f"成功取得{id}的資料")
             soup = bs(res.text, 'lxml')
             title = get_text(soup, ".title > h1")
             house_id = get_text(
                 soup, "#__nuxt > section:nth-child(1) > section > section.crumbs > span")[1:]
 
-            pattern = get_text(soup, ".pattern > span[data-v-b5702979]")
+            pattern_span = get_text(soup, ".pattern > span[data-v-b5702979]")
+
+            pattern_list = {
+                "layout_type": None,
+                "bedrooms": 0,
+                "living_rooms": 0,
+                "bathrooms": 0
+            }
+            if "開放式" in pattern_span:
+                pattern_list["layout_type"] = "open_plan"
+                pattern_list["bedrooms"] = None
+                pattern_list["living_rooms"] = None
+                pattern_list["bathrooms"] = None
+
+            else:
+
+                bedroom_match = re.search(r"(\d+)房", pattern_span)
+                living_room_match = re.search(r"(\d+)廳", pattern_span)
+                bathroom_match = re.search(r"(\d+)衛", pattern_span)
+
+                if bedroom_match or living_room_match or bathroom_match:
+                    pattern_list["layout_type"] = "standard"
+
+                    if bedroom_match:
+                        pattern_list["bedrooms"] = int(bedroom_match.group(1))
+                    if living_room_match:
+                        pattern_list["living_rooms"] = int(
+                            living_room_match.group(1))
+                    if bathroom_match:
+                        pattern_list["bathrooms"] = int(
+                            bathroom_match.group(1))
+
             rent_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
-            rent = int(rent_text.replace(",","").strip())
+            rent = int(rent_text.replace(",", "").strip())
 
-            identity_requirement = None
+            identity_text = None
             for item in soup.select("div.desc-item"):
                 label_span = item.select_one("span.desc-label")
                 label = label_span.get_text(strip=True) if label_span else None
@@ -192,17 +223,27 @@ def find_houseID(id, kind):
                     value = item.select_one("span.desc-value")
 
                     if value:
-                        identity_requirement = value.get_text(strip=True)
+                        identity_text = value.get_text(strip=True)
                     break
+
+            if identity_text is None:
+                identity_requirement = None
+            else:
+                identity_requirement = {
+                    "student": 1 if "學生" in identity_text else 0,
+                    "worker": 1 if "上班族" in identity_text else 0,
+                    "family": 1 if "家庭" in identity_text else 0
+                }
 
             # sqm = get_text(soup, "div.pattern > span.inline-flex-row")
 
             sqm_span = next((span for span in soup.select(
                             "div.pattern > span.inline-flex-row") if "坪" in span.get_text(strip=True)), None)
-            sqm = (float(sqm_span.get_text(strip=True).replace('坪','').strip()) if sqm_span else None)
+            sqm = (float(sqm_span.get_text(strip=True).replace(
+                '坪', '').strip()) if sqm_span else None)
             floor = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.pattern > span:nth-child(5)")
-            print(sqm)
+
             address = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
             facility = soup.select_one(
@@ -213,18 +254,33 @@ def find_houseID(id, kind):
                     for x in facility.select(":scope > dl:not(.del)")
                 ]
             else:
-                facility_list = []
+                facility_list = None
+
             rental_period = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(1) > span.desc-value")
             # pet = get_text(
             #     soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(4) > span.desc-value")
             pet_span = next((span for span in soup.select(
                 "span.desc-value") if "寵物" in span.get_text(strip=True)), None)
-            pet = pet_span.get_text(strip=True) if pet_span else None
+            if pet_span:
+                pet_text = pet_span.get_text(strip=True)
+                if "不可養寵物" in pet_text:
+                    pet = 0
+                elif "可養寵物" in pet_text:
+                    pet = 1
+                else:
+                    pet = None
 
             cook_span = next((span for span in soup.select(
                 "span.desc-value") if "開伙" in span.get_text(strip=True)), None)
-            cook = cook_span.get_text(strip=True) if cook_span else None
+            cook_text = cook_span.get_text(strip=True) if cook_span else None
+            if cook_text:
+                if "可開伙" in cook_text:
+                    cook = 1
+                elif "不可開伙" in cook_text:
+                    cook = 0
+                else:
+                    cook = None
 
             transportation_list = []
             # rent = soup.select_one("#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
@@ -321,10 +377,33 @@ def find_houseID(id, kind):
             else:
                 image_list = []
 
+            facility_mapping = {
+                "refrigerator": "冰箱",
+                "washing_machine": "洗衣機",
+                "tv": "電視",
+                "air_conditioner": "冷氣",
+                "water_heater": "熱水器",
+                "bed": "床",
+                "wardrobe": "衣櫃",
+                "cable": "第四台",
+                "internet": "網路",
+                "gas": "天然瓦斯",
+                "sofa": "沙發",
+                "table": "桌椅",
+                "balcony": "陽台",
+                "elevator": "電梯",
+                "parking": "平面車位"
+            }
+            facility_result = {
+                eng_name: (1 if chn_name in facility_list else 0)
+                for eng_name, chn_name in facility_mapping.items()
+
+            }
+
             house_data = {
                 "title": title,
                 "house_id": house_id,
-                "pattern": pattern,
+                "pattern": pattern_list,
                 "rent": rent,
                 "identity_requirement": identity_requirement,
                 "sqm": sqm,
@@ -333,7 +412,7 @@ def find_houseID(id, kind):
                 "transportation": transportation_list,
                 "activity": activity_list,
                 "education": education_list,
-                "facility": facility_list,
+                "facility": facility_result,
                 "rental_period": rental_period,
                 "pet": pet,
                 "cook": cook,
@@ -345,6 +424,7 @@ def find_houseID(id, kind):
                 "kind": kind,
                 "images": image_list
             }
+            # house_data['facility'].append(facility_result)
             return house_data, id, status_code
 
         elif res.status_code in (403, 404):
@@ -401,7 +481,6 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     limit = limit
 
     loaded_id_list = []
-    
 
     # 嘗試讀取all_house_id.jsonl
     if os.path.exists(f"all_house_id_{kind}.jsonl"):
@@ -518,7 +597,6 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                     crawled_ids.add(house_id)
     print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
 
-    
     process_count = 0
     success_count = 0
     fail_count = 0
@@ -536,7 +614,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
             if limit is not None and process_count >= limit:
                 print(f"已達本次測試上線: {limit}筆")
                 break
-            
+
             print(f"開始取得ID: {house_id}的詳細資料...")
             house_data, returned_id, status_code = find_houseID(house_id, kind)
 
@@ -568,7 +646,6 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
             print(f"剩餘{remaining_count}筆資料,等待{sleep_time:.2f}秒...")
             sleep(sleep_time)
 
-    
     print("房屋詳細資料爬取完成")
     print(f"本次成功:{success_count}筆")
     print(f"失敗:{fail_count}筆")
@@ -577,35 +654,36 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}_{random_id}.json"
     return path
 
+
 def merge_house_data_json(file_paths):
     merge_data = []
 
     for file_path in file_paths:
-        with open(file_path,"r",encoding="utf-8")as f:
+        with open(file_path, "r", encoding="utf-8")as f:
             data = json.load(f)
 
-            if isinstance(data,list):
+            if isinstance(data, list):
                 merge_data.extend(data)
 
-    with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json","w",encoding="utf-8")as f:
-        json.dump(merge_data,f,ensure_ascii=False,indent=4)
+    with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json", "w", encoding="utf-8")as f:
+        json.dump(merge_data, f, ensure_ascii=False, indent=4)
 
-    
 
 def start_591crawler_all(limit=None):
     file_paths = []
 
     for kind in [1, 2, 3, 4]:
-        path = start_591crawler(kind=kind,limit=limit)
+        path = start_591crawler(kind=kind, limit=limit)
         file_paths.append(path)
     merge_house_data_json(file_paths)
 
+
 def merge_json(*file_names, folder="output"):
     merge_data = []
-    #print(merge_data)
+    # print(merge_data)
     for file_name in file_names:
-        file_path = os.path.join(folder,file_name)
-        with open(file_path,"r",encoding="utf-8")as f:
+        file_path = os.path.join(folder, file_name)
+        with open(file_path, "r", encoding="utf-8")as f:
             data = json.load(f)
 
         merge_data.extend(data)
@@ -615,13 +693,14 @@ def merge_json(*file_names, folder="output"):
         folder,
         (f"data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json"))
 
-    with open(output_path,"w",encoding="utf-8")as f:
-        json.dump(merge_data,f,ensure_ascii=False,indent=4)
+    with open(output_path, "w", encoding="utf-8")as f:
+        json.dump(merge_data, f, ensure_ascii=False, indent=4)
 
     output_name = f"all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json"
-     
+
     print(f"合併完成, 輸出位置: {output_name}")
-    #return output_path
+    # return output_path
+
 
 def auto_merge_json(file_names):
     folder = "output"
@@ -634,15 +713,16 @@ def auto_merge_json(file_names):
             data = json.load(f)
 
         merged_data.extend(data)
-    with open(f"{folder}/select_data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json","w",encoding="utf-8")as f:
-            json.dump(merged_data,f,ensure_ascii=False,indent=4)
+    with open(f"{folder}/select_data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json", "w", encoding="utf-8")as f:
+        json.dump(merged_data, f, ensure_ascii=False, indent=4)
     output_path = f"{folder}/select_data_merge_{datetime.today().strftime('%Y_%m%d')}_{random_id_merge}.json"
     print(f"json檔已合併完成,路徑: {output_path}")
     return merged_data
 
-def start_591crawler_select(kinds=None,limit=None):
+
+def start_591crawler_select(kinds=None, limit=None):
     if kinds is None:
-        kinds = [1,2,3,4]
+        kinds = [1, 2, 3, 4]
     elif isinstance(kinds, int):
         kinds = [kinds]
     elif isinstance(kinds, str):
@@ -651,15 +731,16 @@ def start_591crawler_select(kinds=None,limit=None):
     file_paths = []
 
     for kind in kinds:
-        path = start_591crawler(kind=kind,limit=limit)
+        path = start_591crawler(kind=kind, limit=limit)
         filename = Path(path).name
         file_paths.append(filename)
 
     if len(file_paths) == 1:
         return file_paths[0]
-    #print(file_paths)    
+    # print(file_paths)
     merged_path = auto_merge_json(file_paths)
     return merged_path
+
 
 if __name__ == '__main__':
     # print(find_houseID(21941368))
