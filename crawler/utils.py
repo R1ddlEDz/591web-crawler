@@ -7,6 +7,7 @@ from time import sleep
 import random
 import os
 from pathlib import Path
+from bs4.element import Tag
 
 random_id = random.randint(10000, 99999)
 # print(random_id)
@@ -241,11 +242,83 @@ def find_houseID(id, kind):
                             "div.pattern > span.inline-flex-row") if "坪" in span.get_text(strip=True)), None)
             sqm = (float(sqm_span.get_text(strip=True).replace(
                 '坪', '').strip()) if sqm_span else None)
-            floor = get_text(
+            sqm_text = sqm_span.get_text(strip=True) if sqm_span else None
+            floor_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.pattern > span:nth-child(5)")
+            floor_data = {
+                "floor_type": None,
+                "current_floor_start": None,
+                "current_floor_end": None,
+                "total_floor": None,
+                "is_basement": 0,
+                "is_rooftop_addition": 0,
+                "is_whole_building": 0
+            }
 
-            address = get_text(
+            total_match = re.search(r"/(\d+)F$", floor_text)
+            if total_match:
+                floor_data["total_floor"] = int(total_match.group(1))
+
+            if "頂層加蓋" in floor_text or "頂樓加蓋" in floor_text:
+                floor_data['floor_type'] = "rooftop_addition"
+                floor_data["is_rooftop_addition"] = 1
+            if "整棟" in floor_text:
+                floor_data["floor_type"] = "whole_building"
+                floor_data["is_whole_building"] = 1
+                floor_data["current_floor_start"] = 1
+                floor_data["current_floor_end"] = floor_data["total_floor"]
+
+            basement_range_match = re.search(r"^B(\d+)~(\d+)F/(\d+)F$", floor_text)
+            if basement_range_match:
+                floor_data["floor_type"] = "basement_range"
+                basement_floor = int(basement_range_match.group(1))
+                upper_floor = int(basement_range_match.group(2))
+                floor_data["current_floor_start"] = -basement_floor
+                floor_data["current_floor_end"] = upper_floor
+                floor_data["is_basement"] = 1
+
+            basement_match = re.search(r"^B(\d+)/(\d+)F$",floor_text)
+            if basement_match:
+                floor_data["floor_type"] = "basement"
+                basement_floor = int(basement_range_match.group(1))
+                floor_data["current_floor_start"] = -basement_floor
+                floor_data["current_floor_end"] = -basement_floor
+                floor_data["is_basement"] = 1
+
+            range_match = re.search(r"^(\d+)F~(\d+)F/(\d+)F$", floor_text)
+            if range_match:
+                floor_data["floor_type"] = "range"
+                floor_data["current_floor_start"] = int(range_match.group(1))
+                floor_data["current_floor_end"] = int(range_match.group(2))
+
+            single_match = re.search(r"^(\d+)F/(\d+)F$", floor_text)
+            if single_match:
+                floor_data["floor_type"] = "single"
+                current_floor = int(single_match.group(1))
+                floor_data["current_floor_start"] = current_floor
+                floor_data["current_floor_end"] = current_floor
+            
+            address_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
+            address_result = {
+                "district": None,
+                "road": None
+            }
+            if not address_text:
+                address_result
+            district_match = re.search(r"([^縣市]+區)", address_text)
+            if district_match:
+                address_result["district"]= district_match.group(1)
+
+            road_match = re.search(r"([^區]+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)", address_text)
+            if road_match:
+                road = road_match.group(1)
+
+                if address_result['district'] and road.startswith(address_result['district']):
+                    road = road[len(address_result['district']):]
+
+                address_result['road'] = road
+            None
             facility = soup.select_one(
                 "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div.facility")
             if facility:
@@ -282,7 +355,225 @@ def find_houseID(id, kind):
                 else:
                     cook = None
 
+            
+            taipei_metro_lines = {
+                "南港展覽館",
+                "南港軟體園區",
+                "東湖",
+                "葫洲",
+                "大湖公園",
+                "內湖",
+                "文德",
+                "港墘",
+                "西湖",
+                "劍南路",
+                "大直",
+                "松山機場",
+                "中山國中",
+                "南京復興",
+                "忠孝復興",
+                "大安",
+                "科技大樓",
+                "六張犁",
+                "麟光",
+                "辛亥",
+                "萬芳醫院",
+                "萬芳社區",
+                "木柵",
+                "動物園",
+                "新北投",
+                "淡水",
+                "紅樹林",
+                "竹圍",
+                "關渡",
+                "忠義",
+                "復興崗",
+                "北投",
+                "奇岩",
+                "唭哩岸",
+
+            }
+
+            # 文湖線
+            wenhu_line = [
+            "動物園",
+            "木柵",
+            "萬芳社區",
+            "萬芳醫院",
+            "辛亥",
+            "麟光",
+            "六張犁",
+            "科技大樓",
+            "大安",
+            "忠孝復興",
+            "南京復興",
+            "中山國中",
+            "松山機場",
+            "大直",
+            "劍南路",
+            "西湖",
+            "港墘",
+            "文德",
+            "內湖",
+            "大湖公園",
+            "葫洲",
+            "東湖",
+            "南港軟體園區",
+            "南港展覽館"
+            ]
+
+            # 淡水信義線
+            tamsui_xinyi_line = [
+                "淡水站",
+                "紅樹林站",
+                "竹圍站",
+                "關渡站",
+                "忠義站",
+                "復興崗站",
+                "北投站",
+                "奇岩站",
+                "唭哩岸站",
+                "石牌站",
+                "明德站",
+                "芝山站",
+                "士林站",
+                "劍潭站",
+                "圓山站",
+                "民權西路站",
+                "雙連站",
+                "中山站",
+                "台北車站",
+                "台大醫院站",
+                "中正紀念堂站",
+                "東門站",
+                "大安森林公園站",
+                "大安站",
+                "信義安和站",
+                "台北101/世貿站",
+                "象山站",
+                "廣慈/奉天宮站"
+            ]
+
+            xinbeitou_branch = [
+                "北投站",
+                "新北投站"
+            ]
+
+            # 松山新店線
+            songshan_xindian_line = [
+                "新店站",
+                "新店區公所站",
+                "七張站",
+                "大坪林站",
+                "景美站",
+                "萬隆站",
+                "公館站",
+                "台電大樓站",
+                "古亭站",
+                "中正紀念堂站",
+                "小南門站",
+                "西門站",
+                "北門站",
+                "中山站",
+                "松江南京站",
+                "南京復興站",
+                "台北小巨蛋站",
+                "南京三民站",
+                "松山站"
+            ]
+
+            # 小碧潭支線
+            xiaobitan_branch = [
+                "七張站",
+                "小碧潭站"
+            ]
+
+            # 中和新蘆線
+            zhonghe_xinlu_line = [
+                "南勢角站",
+                "景安站",
+                "永安市場站",
+                "頂溪站",
+                "古亭站",
+                "東門站",
+                "忠孝新生站",
+                "松江南京站",
+                "行天宮站",
+                "中山國小站",
+                "民權西路站",
+                "大橋頭站",
+
+                # 新莊線方向
+                "台北橋站",
+                "菜寮站",
+                "三重站",
+                "先嗇宮站",
+                "頭前庄站",
+                "新莊站",
+                "輔大站",
+                "丹鳳站",
+                "迴龍站",
+
+                # 蘆洲線方向
+                "三重國小站",
+                "三和國中站",
+                "徐匯中學站",
+                "三民高中站",
+                "蘆洲站"
+            ]
+
+            # 板南線
+            bannan_line = [
+                "頂埔站",
+                "永寧站",
+                "土城站",
+                "海山站",
+                "亞東醫院站",
+                "府中站",
+                "板橋站",
+                "新埔站",
+                "江子翠站",
+                "龍山寺站",
+                "西門站",
+                "台北車站",
+                "善導寺站",
+                "忠孝新生站",
+                "忠孝復興站",
+                "忠孝敦化站",
+                "國父紀念館站",
+                "市政府站",
+                "永春站",
+                "後山埤站",
+                "昆陽站",
+                "南港站",
+                "南港展覽館站"
+            ]
+
+            # 環狀線
+            circular_line = [
+                "大坪林站",
+                "十四張站",
+                "秀朗橋站",
+                "景平站",
+                "景安站",
+                "中和站",
+                "橋和站",
+                "中原站",
+                "板新站",
+                "板橋站",
+                "新埔民生站",
+                "頭前庄站",
+                "幸福站",
+                "新北產業園區站"
+            ]
+            all_mrt_stations = set(wenhu_line + tamsui_xinyi_line + xinbeitou_branch + songshan_xindian_line + xiaobitan_branch + zhonghe_xinlu_line + bannan_line + circular_line)
             transportation_list = []
+            transportation_data = {
+                "mrt": [],
+                "bus": []
+            }
+
+            
             # rent = soup.select_one("#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
             transportation_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(1) > div.surround-list-box.traffic > p > span")
@@ -296,6 +587,22 @@ def find_houseID(id, kind):
                 if value is not None:
                     transportation_list.append(value)
 
+            for text in transportation_list:
+                match = re.search(r"距(.+?站)(\d+)公尺", text)
+
+                if not match:
+                    continue
+
+                station_name = match.group(1)
+                distance = int(match.group(2))
+                
+                if station_name  in all_mrt_stations:
+                    transportation_data['mrt'].append({"name": station_name, 'distance_m': distance})
+                else:
+                    transportation_data['bus'].append({'name': station_name, 'distance_m': distance})
+
+            transportation_data['nearest_mrt_distance_m'] = (min(x['distance_m'] for x in transportation_data['mrt']) if transportation_data['mrt'] else None)
+            transportation_data['nearest_bus_distance_m'] = (min(x['distance_m'] for x in transportation_data['bus']) if transportation_data['bus'] else None)  
             activity_list = []
             activity_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(2) > div.surround-list-box.live > p > span")
@@ -308,8 +615,51 @@ def find_houseID(id, kind):
             ]:
                 if value is not None:
                     activity_list.append(value)
+            activity_data = {
+                "shopping_center_count": None,
+                "resturant_count": None
+            }
+            for text in activity_list:
+                shopping_match = re.search(r"(\d+)家購物中心", text)
+                if not shopping_match:
+                    continue
+                resturant_match = re.search(r"(\d+)家餐廳",text)
+                if not resturant_match:
+                    continue
 
+                if shopping_match:
+                    activity_data["shopping_center_count"] = int(shopping_match.group(1))
+
+                if resturant_match:
+                    activity_data["resturant_count"] = int(resturant_match.group(1))
+                
             education_list = []
+            elementary_keywords = [
+                "國民小學",
+                "國小"
+            ]
+
+            middle_keywords = [
+                "國民中學",
+                "國中",
+                "高級中學"
+            ]
+
+            college_keywords = [
+                "大學",
+                "學院",
+                "科技大學",
+                "技術學院",
+                "社區大學"
+            ]
+            education_data = {
+                            "elementary": None,
+                            "middle": None,
+                            "college": None,
+                            "nearest_elementary_distance_m": None,
+                            "nearest_middle_distance_m": None,
+                            "nearest_college_distance_m": None
+                        }
             education_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(3) > div.surround-list-box.education > p > span")
             education_sup1 = get_text(
@@ -321,6 +671,39 @@ def find_houseID(id, kind):
             ]:
                 if value is not None:
                     education_list.append(value)
+
+            for text in education_list:
+                
+                ele_total_text = re.search(r"(\d+)所國小",text)
+                mid_total_text = re.search(r"(\d+)所國中",text)
+                col_total_text = re.search(r"(\d+)所大學",text)
+                
+                if ele_total_text:
+                    education_data['elementary'] = int(ele_total_text.group(1))
+                if mid_total_text:
+                    education_data['middle'] = int(mid_total_text.group(1))
+                if col_total_text:
+                    education_data['college'] = int(col_total_text.group(1))
+               
+                distance_match = re.search(r"(\d+)公尺", text)
+                if not distance_match:
+                    continue
+                
+                distance = int(distance_match.group(1))
+                
+                if any(keyword in text for keyword in elementary_keywords):
+                    current = education_data['nearest_elementary_distance_m']
+                    if current is None or distance < current:
+                        education_data["nearest_elementary_distance_m"] = distance
+
+                elif any(keyword in text for keyword in middle_keywords):
+                    current = education_data["nearest_middle_distance_m"]
+                    if current is None or distance < current:
+                        education_data["nearest_middle_distance_m"] = distance
+                elif any(keyword in text for keyword in college_keywords):
+                    current = education_data["nearest_college_distance_m"]
+                    if current is None or distance < current:
+                        education_data["nearest_college_distance_m"] = distance
 
             description_unfiltered = soup.select_one(
                 "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.house-condition > div.house-condition-content > div.article.t5-rich-editor")
@@ -400,40 +783,57 @@ def find_houseID(id, kind):
 
             }
 
-            house_data = {
+            cleaned_house_data = {
                 "title": title,
+                "house_id": house_id,
+                "pattern_text": pattern_span,
+                "rent": rent,
+                "identity_text": identity_text,
+                "sqm_text": sqm_text,
+                "floor_text": floor_text, 
+                "full_address": address_text,
+                "transportation_text": transportation_list,
+                "activity_text": activity_list,
+                "education_text": education_list,
+                "facility_text": facility_list,
+                "pet_text": pet_text,
+                "cook_text":cook_text,
+                "rental_period": rental_period,
+                "description": description,
+                "upload_text": upload_text,
+                "upload_date": upload_date,
+                #"update_time": update_time,
+                "crawled_time": datetime.now().strftime("%Y-%m-%d"),
+                "kind": kind,
+                "images": image_list
+            }
+            processed_house_data = {
                 "house_id": house_id,
                 "pattern": pattern_list,
                 "rent": rent,
                 "identity_requirement": identity_requirement,
                 "sqm": sqm,
-                "floor": floor,
-                "address": address,
-                "transportation": transportation_list,
-                "activity": activity_list,
-                "education": education_list,
+                "floor": floor_data,
+                "address" : address_result,
+                "transportation": transportation_data,
+                "activity": activity_data,
+                "education": education_data,
                 "facility": facility_result,
-                "rental_period": rental_period,
                 "pet": pet,
                 "cook": cook,
-                "description": description,
-                "upload_text": upload_text,
                 "upload_date": upload_date,
-                # "update_time": update_time,
-                "crawled_time": datetime.now().strftime("%Y-%m-%d"),
-                "kind": kind,
-                "images": image_list
+                "kind": kind
             }
             # house_data['facility'].append(facility_result)
-            return house_data, id, status_code
+            return processed_house_data ,cleaned_house_data, id, status_code
 
         elif res.status_code in (403, 404):
 
             # print(f"{id}錯誤，已寫入failed_house_data.jsonl")
-            return None, id, status_code
+            return None, None, id, status_code
     except Exception as e:
         print(f"網頁請求失敗: {e}")
-        return None, id, status_code
+        return None, None, id, status_code
 
 
 def jsonl_to_json(input_path, output_path):
@@ -466,12 +866,17 @@ def jsonl_to_json(input_path, output_path):
 
 
 def export_house_data_json(kind):
-
+    input_path = f"all_house_data_{kind}.jsonl"
+    output_path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
     jsonl_to_json(
-        f"all_house_data_{kind}.jsonl",
-        f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
-    )
+        input_path,output_path)
+    return output_path
 
+def export_processed_house_data_json(kind):
+    input_path = f"processed_house_data_{kind}.jsonl"
+    output_path = f"output/processed_all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
+    jsonl_to_json(input_path,output_path)
+    return output_path
 
 def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     region = region
@@ -603,7 +1008,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     remaining_count = sum(
         1 for house in loaded_id_list if house["house_id"] not in crawled_ids)
 
-    with open(f"all_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_success, \
+    with open(f"all_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_raw, \
+        open(f"processed_house_data_{kind}.jsonl","a", encoding='utf-8') as f_processed, \
             open(f"failed_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_fail:
         for house in loaded_id_list:
             house_id = house['house_id']
@@ -616,14 +1022,19 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                 break
 
             print(f"開始取得ID: {house_id}的詳細資料...")
-            house_data, returned_id, status_code = find_houseID(house_id, kind)
+            processed_house_data, house_data, returned_id, status_code = find_houseID(house_id, kind)
 
             if house_data is not None:
-                f_success.write(json.dumps(
+                find_tag(house_data)
+                f_raw.write(json.dumps(
                     house_data, ensure_ascii=False) + "\n")
-                f_success.flush()
+                f_raw.flush()
                 success_count += 1
                 print(f"爬取成功")
+
+                if processed_house_data is not None:
+                    f_processed.write(json.dumps(processed_house_data,ensure_ascii=False) + "\n")
+                f_processed.flush()
 
             else:
                 failed_data = {
@@ -650,12 +1061,16 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     print(f"本次成功:{success_count}筆")
     print(f"失敗:{fail_count}筆")
     print(f"開始將house_data_{kind}轉換成json檔")
-    export_house_data_json(kind)
-    path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}_{random_id}.json"
-    return path
+    raw_path = export_house_data_json(kind)
+    processed_path = export_processed_house_data_json(kind)
+   
+    return {
+        "raw": raw_path,
+        "processed": processed_path
+    }
 
 
-def merge_house_data_json(file_paths):
+def merge_house_data_json(file_paths,output_prefix):
     merge_data = []
 
     for file_path in file_paths:
@@ -664,18 +1079,21 @@ def merge_house_data_json(file_paths):
 
             if isinstance(data, list):
                 merge_data.extend(data)
-
-    with open(f"output/all_house_data_merge_{datetime.today().strftime('%Y_%m%d')}.json", "w", encoding="utf-8")as f:
+    output_path = f"output/{output_prefix}_{datetime.today().strftime('%Y_%m%d')}.json"
+    with open(output_path, "w", encoding="utf-8")as f:
         json.dump(merge_data, f, ensure_ascii=False, indent=4)
 
 
 def start_591crawler_all(limit=None):
-    file_paths = []
+    raw_paths = []
+    processed_paths = []
 
     for kind in [1, 2, 3, 4]:
-        path = start_591crawler(kind=kind, limit=limit)
-        file_paths.append(path)
-    merge_house_data_json(file_paths)
+        processed_house_data, house_data = start_591crawler(kind=kind, limit=limit)
+        raw_paths.append(house_data)
+        processed_paths.append(processed_house_data)
+    merge_house_data_json(raw_paths,output_prefix="all_house_data_merge")
+    merge_house_data_json(processed_paths,output_prefix="processed_house_data_merge")
 
 
 def merge_json(*file_names, folder="output"):
@@ -728,19 +1146,39 @@ def start_591crawler_select(kinds=None, limit=None):
     elif isinstance(kinds, str):
         kinds = [int(x.strip()) for x in kinds.split(",")]
 
-    file_paths = []
+    raw_paths = []
+    processed_paths = []
 
     for kind in kinds:
-        path = start_591crawler(kind=kind, limit=limit)
-        filename = Path(path).name
-        file_paths.append(filename)
+        processed_house_data, house_data = start_591crawler(kind=kind, limit=limit)
+        filename = Path(house_data).name
+        raw_paths.append(filename)
+        processed_paths.append(processed_house_data)
 
-    if len(file_paths) == 1:
-        return file_paths[0]
+    if len(kinds) == 1:
+        return {
+            "raw": raw_paths[0],
+            "processed": processed_paths[0]
+        }
+    raw_merged_path = merge_house_data_json(raw_paths,"all_house_data_merge")
+    processed_merged_path = merge_house_data_json(processed_paths, "processed_house_data_merge")
     # print(file_paths)
-    merged_path = auto_merge_json(file_paths)
-    return merged_path
+   
+    return raw_merged_path, processed_merged_path
 
+def find_tag(obj, path="house_data"):
+    if isinstance(obj, Tag):
+        print(f"[Tag found] {path}")
+        print(obj)
+        print("-" * 50)
+
+    elif isinstance(obj, dict):
+        for key, value in obj.items():
+            find_tag(value, f"{path}.{key}")
+
+    elif isinstance(obj, list):
+        for index, value in enumerate(obj):
+            find_tag(value, f"{path}[{index}]")
 
 if __name__ == '__main__':
     # print(find_houseID(21941368))
