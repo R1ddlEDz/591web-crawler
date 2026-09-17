@@ -268,7 +268,8 @@ def find_houseID(id, kind):
                 floor_data["current_floor_start"] = 1
                 floor_data["current_floor_end"] = floor_data["total_floor"]
 
-            basement_range_match = re.search(r"^B(\d+)~(\d+)F/(\d+)F$", floor_text)
+            basement_range_match = re.search(
+                r"^B(\d+)~(\d+)F/(\d+)F$", floor_text)
             if basement_range_match:
                 floor_data["floor_type"] = "basement_range"
                 basement_floor = int(basement_range_match.group(1))
@@ -277,12 +278,14 @@ def find_houseID(id, kind):
                 floor_data["current_floor_end"] = upper_floor
                 floor_data["is_basement"] = 1
 
-            basement_match = re.search(r"^B(\d+)/(\d+)F$",floor_text)
+            basement_match = re.search(r"^B(\d+)/(\d+)F$", floor_text)
             if basement_match:
                 floor_data["floor_type"] = "basement"
-                basement_floor = int(basement_range_match.group(1))
+                basement_floor = int(basement_match.group(1))
+                total_floor = int(basement_match.group(2))
                 floor_data["current_floor_start"] = -basement_floor
                 floor_data["current_floor_end"] = -basement_floor
+                floor_data["total_floor"] = total_floor
                 floor_data["is_basement"] = 1
 
             range_match = re.search(r"^(\d+)F~(\d+)F/(\d+)F$", floor_text)
@@ -297,7 +300,7 @@ def find_houseID(id, kind):
                 current_floor = int(single_match.group(1))
                 floor_data["current_floor_start"] = current_floor
                 floor_data["current_floor_end"] = current_floor
-            
+
             address_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
             address_result = {
@@ -308,9 +311,10 @@ def find_houseID(id, kind):
                 address_result
             district_match = re.search(r"([^縣市]+區)", address_text)
             if district_match:
-                address_result["district"]= district_match.group(1)
+                address_result["district"] = district_match.group(1)
 
-            road_match = re.search(r"([^區]+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)", address_text)
+            road_match = re.search(
+                r"([^區]+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)", address_text)
             if road_match:
                 road = road_match.group(1)
 
@@ -355,7 +359,6 @@ def find_houseID(id, kind):
                 else:
                     cook = None
 
-            
             taipei_metro_lines = {
                 "南港展覽館",
                 "南港軟體園區",
@@ -396,30 +399,30 @@ def find_houseID(id, kind):
 
             # 文湖線
             wenhu_line = [
-            "動物園",
-            "木柵",
-            "萬芳社區",
-            "萬芳醫院",
-            "辛亥",
-            "麟光",
-            "六張犁",
-            "科技大樓",
-            "大安",
-            "忠孝復興",
-            "南京復興",
-            "中山國中",
-            "松山機場",
-            "大直",
-            "劍南路",
-            "西湖",
-            "港墘",
-            "文德",
-            "內湖",
-            "大湖公園",
-            "葫洲",
-            "東湖",
-            "南港軟體園區",
-            "南港展覽館"
+                "動物園",
+                "木柵",
+                "萬芳社區",
+                "萬芳醫院",
+                "辛亥",
+                "麟光",
+                "六張犁",
+                "科技大樓",
+                "大安",
+                "忠孝復興",
+                "南京復興",
+                "中山國中",
+                "松山機場",
+                "大直",
+                "劍南路",
+                "西湖",
+                "港墘",
+                "文德",
+                "內湖",
+                "大湖公園",
+                "葫洲",
+                "東湖",
+                "南港軟體園區",
+                "南港展覽館"
             ]
 
             # 淡水信義線
@@ -566,14 +569,14 @@ def find_houseID(id, kind):
                 "幸福站",
                 "新北產業園區站"
             ]
-            all_mrt_stations = set(wenhu_line + tamsui_xinyi_line + xinbeitou_branch + songshan_xindian_line + xiaobitan_branch + zhonghe_xinlu_line + bannan_line + circular_line)
+            all_mrt_stations = set(wenhu_line + tamsui_xinyi_line + xinbeitou_branch +
+                                   songshan_xindian_line + xiaobitan_branch + zhonghe_xinlu_line + bannan_line + circular_line)
             transportation_list = []
             transportation_data = {
                 "mrt": [],
                 "bus": []
             }
 
-            
             # rent = soup.select_one("#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.house-price > span > strong")
             transportation_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(1) > div.surround-list-box.traffic > p > span")
@@ -595,14 +598,18 @@ def find_houseID(id, kind):
 
                 station_name = match.group(1)
                 distance = int(match.group(2))
-                
-                if station_name  in all_mrt_stations:
-                    transportation_data['mrt'].append({"name": station_name, 'distance_m': distance})
-                else:
-                    transportation_data['bus'].append({'name': station_name, 'distance_m': distance})
 
-            transportation_data['nearest_mrt_distance_m'] = (min(x['distance_m'] for x in transportation_data['mrt']) if transportation_data['mrt'] else None)
-            transportation_data['nearest_bus_distance_m'] = (min(x['distance_m'] for x in transportation_data['bus']) if transportation_data['bus'] else None)  
+                if station_name in all_mrt_stations:
+                    transportation_data['mrt'].append(
+                        {"name": station_name, 'distance_m': distance})
+                else:
+                    transportation_data['bus'].append(
+                        {'name': station_name, 'distance_m': distance})
+
+            transportation_data['nearest_mrt_distance_m'] = (min(
+                x['distance_m'] for x in transportation_data['mrt']) if transportation_data['mrt'] else None)
+            transportation_data['nearest_bus_distance_m'] = (min(
+                x['distance_m'] for x in transportation_data['bus']) if transportation_data['bus'] else None)
             activity_list = []
             activity_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(2) > div.surround-list-box.live > p > span")
@@ -623,16 +630,18 @@ def find_houseID(id, kind):
                 shopping_match = re.search(r"(\d+)家購物中心", text)
                 if not shopping_match:
                     continue
-                resturant_match = re.search(r"(\d+)家餐廳",text)
+                resturant_match = re.search(r"(\d+)家餐廳", text)
                 if not resturant_match:
                     continue
 
                 if shopping_match:
-                    activity_data["shopping_center_count"] = int(shopping_match.group(1))
+                    activity_data["shopping_center_count"] = int(
+                        shopping_match.group(1))
 
                 if resturant_match:
-                    activity_data["resturant_count"] = int(resturant_match.group(1))
-                
+                    activity_data["resturant_count"] = int(
+                        resturant_match.group(1))
+
             education_list = []
             elementary_keywords = [
                 "國民小學",
@@ -653,13 +662,13 @@ def find_houseID(id, kind):
                 "社區大學"
             ]
             education_data = {
-                            "elementary": None,
-                            "middle": None,
-                            "college": None,
-                            "nearest_elementary_distance_m": None,
-                            "nearest_middle_distance_m": None,
-                            "nearest_college_distance_m": None
-                        }
+                "elementary": None,
+                "middle": None,
+                "college": None,
+                "nearest_elementary_distance_m": None,
+                "nearest_middle_distance_m": None,
+                "nearest_college_distance_m": None
+            }
             education_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(3) > div.surround-list-box.education > p > span")
             education_sup1 = get_text(
@@ -673,24 +682,24 @@ def find_houseID(id, kind):
                     education_list.append(value)
 
             for text in education_list:
-                
-                ele_total_text = re.search(r"(\d+)所國小",text)
-                mid_total_text = re.search(r"(\d+)所國中",text)
-                col_total_text = re.search(r"(\d+)所大學",text)
-                
+
+                ele_total_text = re.search(r"(\d+)所國小", text)
+                mid_total_text = re.search(r"(\d+)所國中", text)
+                col_total_text = re.search(r"(\d+)所大學", text)
+
                 if ele_total_text:
                     education_data['elementary'] = int(ele_total_text.group(1))
                 if mid_total_text:
                     education_data['middle'] = int(mid_total_text.group(1))
                 if col_total_text:
                     education_data['college'] = int(col_total_text.group(1))
-               
+
                 distance_match = re.search(r"(\d+)公尺", text)
                 if not distance_match:
                     continue
-                
+
                 distance = int(distance_match.group(1))
-                
+
                 if any(keyword in text for keyword in elementary_keywords):
                     current = education_data['nearest_elementary_distance_m']
                     if current is None or distance < current:
@@ -790,19 +799,19 @@ def find_houseID(id, kind):
                 "rent": rent,
                 "identity_text": identity_text,
                 "sqm_text": sqm_text,
-                "floor_text": floor_text, 
+                "floor_text": floor_text,
                 "full_address": address_text,
                 "transportation_text": transportation_list,
                 "activity_text": activity_list,
                 "education_text": education_list,
                 "facility_text": facility_list,
                 "pet_text": pet_text,
-                "cook_text":cook_text,
+                "cook_text": cook_text,
                 "rental_period": rental_period,
                 "description": description,
                 "upload_text": upload_text,
                 "upload_date": upload_date,
-                #"update_time": update_time,
+                # "update_time": update_time,
                 "crawled_time": datetime.now().strftime("%Y-%m-%d"),
                 "kind": kind,
                 "images": image_list
@@ -814,7 +823,7 @@ def find_houseID(id, kind):
                 "identity_requirement": identity_requirement,
                 "sqm": sqm,
                 "floor": floor_data,
-                "address" : address_result,
+                "address": address_result,
                 "transportation": transportation_data,
                 "activity": activity_data,
                 "education": education_data,
@@ -825,7 +834,7 @@ def find_houseID(id, kind):
                 "kind": kind
             }
             # house_data['facility'].append(facility_result)
-            return processed_house_data ,cleaned_house_data, id, status_code
+            return processed_house_data, cleaned_house_data, id, status_code
 
         elif res.status_code in (403, 404):
 
@@ -863,20 +872,20 @@ def jsonl_to_json(input_path, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(data_list, f, ensure_ascii=False, indent=4)
     print(f"{output_path}轉換完成")
+    return output_path
 
 
 def export_house_data_json(kind):
     input_path = f"all_house_data_{kind}.jsonl"
     output_path = f"output/all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
-    jsonl_to_json(
-        input_path,output_path)
-    return output_path
+    return jsonl_to_json(input_path, output_path)
+
 
 def export_processed_house_data_json(kind):
     input_path = f"processed_house_data_{kind}.jsonl"
     output_path = f"output/processed_all_house_data_{kind}_{datetime.today().strftime('%Y_%m%d')}.json"
-    jsonl_to_json(input_path,output_path)
-    return output_path
+    return jsonl_to_json(input_path, output_path)
+
 
 def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     region = region
@@ -1009,7 +1018,7 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
         1 for house in loaded_id_list if house["house_id"] not in crawled_ids)
 
     with open(f"all_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_raw, \
-        open(f"processed_house_data_{kind}.jsonl","a", encoding='utf-8') as f_processed, \
+        open(f"processed_house_data_{kind}.jsonl", "a", encoding='utf-8') as f_processed, \
             open(f"failed_house_data_{kind}.jsonl", "a", encoding="utf-8") as f_fail:
         for house in loaded_id_list:
             house_id = house['house_id']
@@ -1022,7 +1031,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                 break
 
             print(f"開始取得ID: {house_id}的詳細資料...")
-            processed_house_data, house_data, returned_id, status_code = find_houseID(house_id, kind)
+            processed_house_data, house_data, returned_id, status_code = find_houseID(
+                house_id, kind)
 
             if house_data is not None:
                 find_tag(house_data)
@@ -1033,7 +1043,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                 print(f"爬取成功")
 
                 if processed_house_data is not None:
-                    f_processed.write(json.dumps(processed_house_data,ensure_ascii=False) + "\n")
+                    f_processed.write(json.dumps(
+                        processed_house_data, ensure_ascii=False) + "\n")
                 f_processed.flush()
 
             else:
@@ -1063,14 +1074,14 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
     print(f"開始將house_data_{kind}轉換成json檔")
     raw_path = export_house_data_json(kind)
     processed_path = export_processed_house_data_json(kind)
-   
+
     return {
         "raw": raw_path,
         "processed": processed_path
     }
 
 
-def merge_house_data_json(file_paths,output_prefix):
+def merge_house_data_json(file_paths, output_prefix):
     merge_data = []
 
     for file_path in file_paths:
@@ -1082,6 +1093,7 @@ def merge_house_data_json(file_paths,output_prefix):
     output_path = f"output/{output_prefix}_{datetime.today().strftime('%Y_%m%d')}.json"
     with open(output_path, "w", encoding="utf-8")as f:
         json.dump(merge_data, f, ensure_ascii=False, indent=4)
+    return output_path
 
 
 def start_591crawler_all(limit=None):
@@ -1089,11 +1101,12 @@ def start_591crawler_all(limit=None):
     processed_paths = []
 
     for kind in [1, 2, 3, 4]:
-        processed_house_data, house_data = start_591crawler(kind=kind, limit=limit)
-        raw_paths.append(house_data)
-        processed_paths.append(processed_house_data)
-    merge_house_data_json(raw_paths,output_prefix="all_house_data_merge")
-    merge_house_data_json(processed_paths,output_prefix="processed_house_data_merge")
+        result = start_591crawler(kind=kind, limit=limit)
+        raw_paths.append(result["raw"])
+        processed_paths.append(result["processed"])
+    merge_house_data_json(raw_paths, output_prefix="all_house_data_merge")
+    merge_house_data_json(
+        processed_paths, output_prefix="processed_house_data_merge")
 
 
 def merge_json(*file_names, folder="output"):
@@ -1150,21 +1163,22 @@ def start_591crawler_select(kinds=None, limit=None):
     processed_paths = []
 
     for kind in kinds:
-        processed_house_data, house_data = start_591crawler(kind=kind, limit=limit)
-        filename = Path(house_data).name
-        raw_paths.append(filename)
-        processed_paths.append(processed_house_data)
+        result = start_591crawler(kind=kind, limit=limit)
+        raw_paths.append(result["raw"])
+        processed_paths.append(result["processed"])
 
     if len(kinds) == 1:
         return {
             "raw": raw_paths[0],
             "processed": processed_paths[0]
         }
-    raw_merged_path = merge_house_data_json(raw_paths,"all_house_data_merge")
-    processed_merged_path = merge_house_data_json(processed_paths, "processed_house_data_merge")
+    raw_merged_path = merge_house_data_json(raw_paths, "all_house_data_merge")
+    processed_merged_path = merge_house_data_json(
+        processed_paths, "processed_house_data_merge")
     # print(file_paths)
-   
+
     return raw_merged_path, processed_merged_path
+
 
 def find_tag(obj, path="house_data"):
     if isinstance(obj, Tag):
@@ -1179,6 +1193,7 @@ def find_tag(obj, path="house_data"):
     elif isinstance(obj, list):
         for index, value in enumerate(obj):
             find_tag(value, f"{path}[{index}]")
+
 
 if __name__ == '__main__':
     # print(find_houseID(21941368))
