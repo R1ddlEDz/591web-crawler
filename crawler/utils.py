@@ -8,6 +8,7 @@ import random
 import os
 from pathlib import Path
 from bs4.element import Tag
+import math
 
 random_id = random.randint(10000, 99999)
 # print(random_id)
@@ -150,7 +151,7 @@ def get_max_pages(region=1, keyword=None, page=1, kind=1):
     soup = bs(res.text, 'lxml')
 
     if max_pages == 99999:
-        max_pages = round(int(soup.select_one(
+        max_pages = math.ceil(int(soup.select_one(
             "#__nuxt > div:nth-child(4) > div.list-wrapper > main > div.list-sort > p > strong").get_text(strip=True).replace(",", "")) / 30)
         max_pages_bp = soup.select_one(
             "#__nuxt > div:nth-child(4) > div.list-wrapper > main > div.list-sort > p > strong").get_text(strip=True).replace(",", "")
@@ -167,6 +168,7 @@ def find_houseID(id, kind):
     url = f"https://rent.591.com.tw/{id}"
 
     # print(res.status_code)
+    status_code = None
 
     try:
         res = requests.get(url, headers=custom_headers)
@@ -189,6 +191,12 @@ def find_houseID(id, kind):
             }
             if "開放式" in pattern_span:
                 pattern_list["layout_type"] = "open_plan"
+                pattern_list["bedrooms"] = None
+                pattern_list["living_rooms"] = None
+                pattern_list["bathrooms"] = None
+
+            elif "獨立套房" in pattern_span:
+                pattern_list["layout_type"] = "suite"
                 pattern_list["bedrooms"] = None
                 pattern_list["living_rooms"] = None
                 pattern_list["bathrooms"] = None
@@ -243,16 +251,19 @@ def find_houseID(id, kind):
             sqm = (float(sqm_span.get_text(strip=True).replace(
                 '坪', '').strip()) if sqm_span else None)
             sqm_text = sqm_span.get_text(strip=True) if sqm_span else None
+
             floor_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.info-board > div.pattern > span:nth-child(5)")
+
             floor_data = {
                 "floor_type": None,
                 "current_floor_start": None,
                 "current_floor_end": None,
                 "total_floor": None,
+                "floor_ratio": 0,
                 "is_basement": 0,
                 "is_rooftop_addition": 0,
-                "is_whole_building": 0
+                "is_whole_building": 0,
             }
 
             total_match = re.search(r"/(\d+)F$", floor_text)
@@ -301,14 +312,35 @@ def find_houseID(id, kind):
                 floor_data["current_floor_start"] = current_floor
                 floor_data["current_floor_end"] = current_floor
 
+            if (
+                floor_data["current_floor_start"] is not None
+                and floor_data["current_floor_end"] is not None
+                and floor_data["total_floor"] is not None
+                and floor_data["total_floor"] > 0
+                and floor_data["is_basement"] == 0
+                and floor_data["is_whole_building"] == 0
+            ):
+
+                current_floor_avg = (
+                    floor_data["current_floor_start"]
+                    + floor_data["current_floor_end"]
+                ) / 2
+
+                floor_data["floor_ratio"] = round(
+                    current_floor_avg / floor_data["total_floor"],
+                    3
+                )
+
             address_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.address > p:nth-child(1) > span.load-map > div")
+
             address_result = {
                 "district": None,
                 "road": None
             }
             if not address_text:
                 address_result
+
             district_match = re.search(r"([^縣市]+區)", address_text)
             if district_match:
                 address_result["district"] = district_match.group(1)
@@ -337,6 +369,12 @@ def find_houseID(id, kind):
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(1) > span.desc-value")
             # pet = get_text(
             #     soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(4) > span.desc-value")
+
+            pet_text = None
+            pet = None
+            cook_text = None
+            cook = None
+
             pet_span = next((span for span in soup.select(
                 "span.desc-value") if "寵物" in span.get_text(strip=True)), None)
             if pet_span:
@@ -352,10 +390,10 @@ def find_houseID(id, kind):
                 "span.desc-value") if "開伙" in span.get_text(strip=True)), None)
             cook_text = cook_span.get_text(strip=True) if cook_span else None
             if cook_text:
-                if "可開伙" in cook_text:
-                    cook = 1
-                elif "不可開伙" in cook_text:
+                if "不可開伙" in cook_text:
                     cook = 0
+                elif "可開伙" in cook_text:
+                    cook = 1
                 else:
                     cook = None
 
@@ -596,12 +634,13 @@ def find_houseID(id, kind):
                 if not match:
                     continue
 
-                station_name = match.group(1)
+                station_name = match.group(1).strip()
                 distance = int(match.group(2))
+                normalized_station_name = re.sub(r"^捷運", "", station_name)
 
-                if station_name in all_mrt_stations:
+                if normalized_station_name in all_mrt_stations:
                     transportation_data['mrt'].append(
-                        {"name": station_name, 'distance_m': distance})
+                        {"name": normalized_station_name, 'distance_m': distance})
                 else:
                     transportation_data['bus'].append(
                         {'name': station_name, 'distance_m': distance})
@@ -610,6 +649,28 @@ def find_houseID(id, kind):
                 x['distance_m'] for x in transportation_data['mrt']) if transportation_data['mrt'] else None)
             transportation_data['nearest_bus_distance_m'] = (min(
                 x['distance_m'] for x in transportation_data['bus']) if transportation_data['bus'] else None)
+
+            if transportation_data["nearest_mrt_distance_m"] is not None:
+                transportation_data["has_mrt"] = 1
+            else:
+                transportation_data["has_mrt"] = 0
+
+            mrt_distance = transportation_data['nearest_mrt_distance_m']
+            if mrt_distance is None:
+                transportation_data['mrt_distance_bucket'] = "no_mrt"
+
+            elif mrt_distance < 300:
+                transportation_data["mrt_distance_bucket"] = "<300"
+
+            elif mrt_distance < 500:
+                transportation_data["mrt_distance_bucket"] = "300-500"
+
+            elif mrt_distance < 800:
+                transportation_data["mrt_distance_bucket"] = "500-800"
+
+            else:
+                transportation_data["mrt_distance_bucket"] = "800+"
+
             activity_list = []
             activity_main = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.surround > div.surround-list > div:nth-child(2) > div.surround-list-box.live > p > span")
@@ -624,8 +685,12 @@ def find_houseID(id, kind):
                     activity_list.append(value)
             activity_data = {
                 "shopping_center_count": None,
-                "resturant_count": None
+                "restaurant_count": None
             }
+
+            shopping_count = None
+            restaurant_count = None
+
             for text in activity_list:
                 shopping_match = re.search(r"(\d+)家購物中心", text)
                 if not shopping_match:
@@ -639,7 +704,7 @@ def find_houseID(id, kind):
                         shopping_match.group(1))
 
                 if resturant_match:
-                    activity_data["resturant_count"] = int(
+                    activity_data["restaurant_count"] = int(
                         resturant_match.group(1))
 
             education_list = []
@@ -770,27 +835,59 @@ def find_houseID(id, kind):
                 image_list = []
 
             facility_mapping = {
-                "refrigerator": "冰箱",
-                "washing_machine": "洗衣機",
-                "tv": "電視",
-                "air_conditioner": "冷氣",
-                "water_heater": "熱水器",
-                "bed": "床",
-                "wardrobe": "衣櫃",
-                "cable": "第四台",
-                "internet": "網路",
-                "gas": "天然瓦斯",
-                "sofa": "沙發",
-                "table": "桌椅",
-                "balcony": "陽台",
-                "elevator": "電梯",
-                "parking": "平面車位"
+                "refrigerator": ["冰箱"],
+                "washing_machine": ["洗衣機"],
+                "tv": ["電視"],
+                "air_conditioner": ["冷氣"],
+                "water_heater": ["熱水器"],
+                "bed": ["床"],
+                "wardrobe": ["衣櫃"],
+                "cable": ["第四台"],
+                "internet": ["網路"],
+                "gas": ["天然瓦斯"],
+                "sofa": ["沙發"],
+                "table": ["桌椅"],
+                "balcony": ["陽台"],
+                "elevator": ["電梯"],
+                "parking": ["平面車位",
+                            "機械車位",
+                            "平面+機械車位",
+                            "其他車位"]
             }
             facility_result = {
-                eng_name: (1 if chn_name in facility_list else 0)
-                for eng_name, chn_name in facility_mapping.items()
+                eng_name: int(any(keyword in facility for facility in facility_list for keyword in keywords)) for eng_name, keywords in facility_mapping.items()}
 
-            }
+            balcony_count = 0
+
+            facility_score_fields = [
+                "refrigerator",
+                "washing_machine",
+                "tv",
+                "air_conditioner",
+                "water_heater",
+                "bed",
+                "wardrobe",
+                "cable",
+                "internet",
+                "gas",
+                "sofa",
+                "table",
+                "balcony",
+                "elevator",
+                "parking"
+            ]
+
+            facility_result["facility_score"] = sum(
+                facility_result[field]
+                for field in facility_score_fields
+            )
+
+            for facility in facility_list:
+                match = re.search(r"(\d+)陽台", facility)
+                if match:
+                    balcony_count = int(match.group(1))
+                    break
+            facility_result['balcony_count'] = balcony_count
 
             cleaned_house_data = {
                 "title": title,
@@ -822,6 +919,7 @@ def find_houseID(id, kind):
                 "rent": rent,
                 "identity_requirement": identity_requirement,
                 "sqm": sqm,
+                "rps": rent / sqm,
                 "floor": floor_data,
                 "address": address_result,
                 "transportation": transportation_data,
