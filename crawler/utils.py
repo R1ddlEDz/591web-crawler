@@ -197,9 +197,9 @@ def find_houseID(id, kind):
 
             elif "獨立套房" in pattern_span:
                 pattern_list["layout_type"] = "suite"
-                pattern_list["bedrooms"] = None
-                pattern_list["living_rooms"] = None
-                pattern_list["bathrooms"] = None
+                pattern_list["bedrooms"] = 1
+                pattern_list["living_rooms"] = 0
+                pattern_list["bathrooms"] = 1
 
             else:
 
@@ -888,10 +888,11 @@ def find_houseID(id, kind):
                     balcony_count = int(match.group(1))
                     break
             facility_result['balcony_count'] = balcony_count
-
+            source_url = f"https://rent.591.com.tw/{house_id}"
             cleaned_house_data = {
                 "title": title,
-                "house_id": house_id,
+                "source_listing_id": house_id,
+                "source_url": source_url,
                 "pattern_text": pattern_span,
                 "rent": rent,
                 "identity_text": identity_text,
@@ -911,9 +912,11 @@ def find_houseID(id, kind):
                 # "update_time": update_time,
                 "crawled_time": datetime.now().strftime("%Y-%m-%d"),
                 "kind": kind,
+                "source": 591,
                 "images": image_list
             }
             processed_house_data = {
+                "source": 591,
                 "house_id": house_id,
                 "pattern": pattern_list,
                 "rent": rent,
@@ -1109,6 +1112,21 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                     crawled_ids.add(house_id)
     print(f"共有{len(loaded_id_list)}筆房屋ID, 其中{len(crawled_ids)}筆已經處理過")
 
+    unique_house_list = []
+    seen_ids = set()
+    for house in loaded_id_list:
+        house_id = house.get("house_id")
+        if not house_id or house_id in seen_ids:
+            continue
+
+        seen_ids.add(house_id)
+        unique_house_list.append(house)
+
+    duplicate_count = len(loaded_id_list) - len(unique_house_list)
+    loaded_id_list = unique_house_list
+    if duplicate_count:
+        print(f"已排除 {duplicate_count} 筆重複或無效的房屋ID")
+
     process_count = 0
     success_count = 0
     fail_count = 0
@@ -1128,6 +1146,8 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                 print(f"已達本次測試上線: {limit}筆")
                 break
 
+            # 先登記本次執行的 ID，避免同一批資料重複抓取。
+            crawled_ids.add(house_id)
             print(f"開始取得ID: {house_id}的詳細資料...")
             processed_house_data, house_data, returned_id, status_code = find_houseID(
                 house_id, kind)
