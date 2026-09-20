@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from bs4.element import Tag
 import math
+from zoneinfo import ZoneInfo
 
 random_id = random.randint(10000, 99999)
 # print(random_id)
@@ -101,7 +102,9 @@ def find_house(region=1, keyword=None, page=1, kind=1):
                     "house_id": house_id_1,
                     "history_date": update_list_1
                 })
-            date_now_withseconds = datetime.now().replace(microsecond=0).isoformat(" ")
+            date_now_withseconds = datetime.now(
+                ZoneInfo("Asia/Taipei")
+            ).replace(microsecond=0).isoformat()
             history_list = []
             for house_id, rent_price in zip(
                     house_id_list,
@@ -122,6 +125,70 @@ def find_house(region=1, keyword=None, page=1, kind=1):
     # print(data)
 
 # find_house(region=1)
+
+
+def chinese_to_number(text):
+    chinese_num = {
+        "零": 0,
+        "一": 1,
+        "二": 2,
+        "兩": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9
+    }
+
+    if text == "十":
+        return 10
+
+    if text.startswith("十"):
+        return 10 + chinese_num.get(text[1], 0)
+
+    if text.endswith("十"):
+        return chinese_num.get(text[0], 0) * 10
+
+    if "十" in text:
+        left, right = text.split("十", 1)
+        tens = chinese_num.get(left, 0) * 10
+        ones = chinese_num.get(right, 0) if right else 0
+
+        return tens + ones
+
+    return chinese_num.get(text)
+
+
+def parse_rental_period(rental_period):
+    if not rental_period:
+        return None
+    text = rental_period.strip()
+    if "半年" in text:
+        return 6
+
+    year_match = re.search(r"(\d+)\s*年", text)
+    if year_match:
+        return int(year_match.group(1))*12
+
+    month_match = re.search(r"(\d+)\s*個?月", text)
+    if month_match:
+        return int(month_match.group(1))
+
+    chinese_year_match = re.search(r"([零一二兩三四五六七八九十]+)\s*年", text)
+    if chinese_year_match:
+        year = chinese_to_number(chinese_year_match.group(1))
+        if year is not None:
+            return year * 12
+
+    chinese_month_match = re.search(r"([零一二兩三四五六七八九十]+)\s*個?月", text)
+    if chinese_month_match:
+        month = chinese_to_number(chinese_month_match.group(1))
+        if month is not None:
+            return month
+
+    return None
 
 
 def get_max_pages(region=1, keyword=None, page=1, kind=1):
@@ -369,6 +436,8 @@ def find_houseID(id, kind):
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(1) > span.desc-value")
             # pet = get_text(
             #     soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.main-content > section.block.service > div:nth-child(2) > div > div > div:nth-child(4) > span.desc-value")
+
+            rental_period_months = parse_rental_period(rental_period)
 
             pet_text = None
             pet = None
@@ -790,7 +859,10 @@ def find_houseID(id, kind):
             upload_text = get_text(
                 soup, "#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.publish-info")
             # update_time_unfiltered = get_text(soup,"#__nuxt > section:nth-child(3) > section.main-wrapper > section.aside > section.contact-tip > div.grey.publish-info")
-            now = datetime.now()
+            upload_date = None
+            now = datetime.now(
+                ZoneInfo("Asia/Taipei")
+            )
             if "天前發佈" in upload_text:
                 filtered_update_time = re.search(r'(\d+)\s*天前', upload_text)
                 if filtered_update_time:
@@ -804,9 +876,17 @@ def find_houseID(id, kind):
                 if filtered_update_time:
                     month = int(filtered_update_time.group(1))
                     day = int(filtered_update_time.group(2))
-                    current_year = now.year
-                    upload_date = datetime(
-                        year=current_year, month=month, day=day).strftime("%Y-%m-%d")
+                    parsed_date = datetime(
+                        year=now.year,
+                        month=month,
+                        day=day,
+                        tzinfo=ZoneInfo("Asia/Taipei")
+                    )
+                    if parsed_date.date() > now.date():
+                        parsed_date = parsed_date.replace(
+                            year=now.year - 1
+                        )
+                    upload_date = parsed_date.strftime("%Y-%m-%d")
 
             else:
                 upload_date = now.strftime("%Y-%m-%d")
@@ -910,7 +990,9 @@ def find_houseID(id, kind):
                 "upload_text": upload_text,
                 "upload_date": upload_date,
                 # "update_time": update_time,
-                "crawled_time": datetime.now().strftime("%Y-%m-%d"),
+                "crawled_time": datetime.now(
+                    ZoneInfo("Asia/Taipei")
+                ).replace(microsecond=0).isoformat(),
                 "kind": kind,
                 "source": 591,
                 "images": image_list
@@ -931,6 +1013,7 @@ def find_houseID(id, kind):
                 "facility": facility_result,
                 "pet": pet,
                 "cook": cook,
+                "rental_period_months": rental_period_months,
                 "upload_date": upload_date,
                 "kind": kind
             }
@@ -1169,7 +1252,9 @@ def start_591crawler(region=1, keyword=None, page=1, kind=1, limit=None):
                 failed_data = {
                     "house_id": returned_id,
                     "status_code": status_code,
-                    "failed_time": datetime.now().replace(microsecond=0).isoformat(" ")}
+                    "failed_time": datetime.now(
+                        ZoneInfo("Asia/Taipei")
+                    ).replace(microsecond=0).isoformat()}
 
                 f_fail.write(json.dumps(
                     failed_data, ensure_ascii=False) + "\n")
