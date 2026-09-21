@@ -18,3 +18,4 @@ failed_house_data_[0-9]*
 rent_history_[0-9]*
 output/
 processed_house_data_[0-9]*
+house_images/
