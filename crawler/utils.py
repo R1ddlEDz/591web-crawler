@@ -256,6 +256,12 @@ def find_houseID(id, kind):
                 "living_rooms": 0,
                 "bathrooms": 0
             }
+
+            data_quality = {
+                "is_suspicious": False,
+                "issues": []
+            }
+
             if "開放式" in pattern_span:
                 pattern_list["layout_type"] = "open_plan"
                 pattern_list["bedrooms"] = None
@@ -267,6 +273,12 @@ def find_houseID(id, kind):
                 pattern_list["bedrooms"] = 1
                 pattern_list["living_rooms"] = 0
                 pattern_list["bathrooms"] = 1
+            
+            if layout_type is None:
+                if kind == 3:
+                    layout_type = "shared_suite"
+                elif kind == 4:
+                    layout_type = "shared_room"
 
             else:
 
@@ -279,6 +291,7 @@ def find_houseID(id, kind):
 
                     if bedroom_match:
                         pattern_list["bedrooms"] = int(bedroom_match.group(1))
+                        bedroom_test = int(bedroom_match.group(1))
                     if living_room_match:
                         pattern_list["living_rooms"] = int(
                             living_room_match.group(1))
@@ -961,13 +974,40 @@ def find_houseID(id, kind):
                 facility_result[field]
                 for field in facility_score_fields
             )
+            balcony_count = 0
 
             for facility in facility_list:
-                match = re.search(r"(\d+)陽台", facility)
-                if match:
-                    balcony_count = int(match.group(1))
+                if "陽台" in facility:
+                    match = re.search(r"(\d+)陽台", facility)
+                    if match:
+                        balcony_count = int(match.group(1))
+                        break
+
+                    else:
+                        balcony_count = 1
+
                     break
+
             facility_result['balcony_count'] = balcony_count
+            rps = rent / sqm
+            issues = []
+
+            if bedroom_test is not None and > 10 :
+                issues.append("bedroom_count")
+
+            if rent is not None and rent > 1_000_000:
+                issues.append("extreme_rent")
+
+            if sqm is not None and sqm > 500:
+                issues.append("extreme_sqm")
+
+            if rps is not None and rps > 10_000:
+                issues.append("extreme_rps")
+
+            if issues:
+                data_quality["is_suspicious"] = True
+                data_quality["issues"] = issues
+
             source_url = f"https://rent.591.com.tw/{house_id}"
             cleaned_house_data = {
                 "title": title,
@@ -1004,7 +1044,7 @@ def find_houseID(id, kind):
                 "rent": rent,
                 "identity_requirement": identity_requirement,
                 "sqm": sqm,
-                "rps": rent / sqm,
+                "rps": rps,
                 "floor": floor_data,
                 "address": address_result,
                 "transportation": transportation_data,
@@ -1015,7 +1055,8 @@ def find_houseID(id, kind):
                 "cook": cook,
                 "rental_period_months": rental_period_months,
                 "upload_date": upload_date,
-                "kind": kind
+                "kind": kind,
+                "data_quality":data_quality
             }
             # house_data['facility'].append(facility_result)
             return processed_house_data, cleaned_house_data, id, status_code
